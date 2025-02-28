@@ -16,12 +16,12 @@ def train(model, train_loader, criterion, optimizer, device):
     
     for images, labels in tqdm(train_loader):
         images, labels = images.to(device), labels.to(device)
-        
-        optimizer.zero_grad()
+
         outputs = model(images)
         loss = criterion(outputs, labels)
         loss.backward()
         optimizer.step()
+        optimizer.zero_grad()
         
         total_loss += loss.item()
         predicted = torch.argmax(outputs, dim=-1)

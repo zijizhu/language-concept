@@ -6,7 +6,14 @@ import torch.nn.functional as F
 from promts import openai_imagenet_template
 
 class CLIPConcept(nn.Module):
-    def __init__(self, query_features: torch.Tensor | None = None, query_words: list[str] = [], num_classes: int = 200, device: str | torch.device = 'cuda', clip_model: str = 'ViT-B/16'):
+    def __init__(
+            self,
+            query_features: torch.Tensor | None = None,
+            query_words: list[str] = [],
+            num_classes: int = 200,
+            device: str | torch.device = 'cuda',
+            clip_model: str = 'ViT-B/16'
+        ):
         super().__init__()
         self.clip, _ = clip.load(clip_model, jit=False)
 
@@ -38,7 +45,7 @@ class CLIPConcept(nn.Module):
         attr_dim = attr_logits.size(-1)
         attr_logits = attr_logits.permute(0, 2, 1).reshape(-1, attr_dim, w, h)
 
-        attr_logits_pooled = F.adaptive_max_pool2d(attr_logits, (1,1,)).squeeze()
+        attr_logits_pooled = F.adaptive_avg_pool2d(attr_logits, (1,1,)).squeeze()
 
         logits = self.linear(attr_logits_pooled)
 
