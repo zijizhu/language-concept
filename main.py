@@ -53,7 +53,7 @@ def validate(model, test_loader, criterion, device):
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--epochs', type=int, default=10, help='Number of training epochs')
-    parser.add_argument('--batch_size', type=int, default=64, help='Batch size for training')
+    parser.add_argument('--batch-size', type=int, default=64, help='Batch size for training')
     parser.add_argument('--lr', type=float, default=0.001, help='Learning rate')
     parser.add_argument('--data-dir', type=str, default='datasets')
 
@@ -69,7 +69,7 @@ def main():
     test_loader = DataLoader(test_dataset, batch_size=args.batch_size, shuffle=False)
     
     model = CLIPConcept(
-        query_features=torch.load('data/sun_attr_features_multi_prompt_mean.pt'),
+        query_features=torch.load('data/SUN/sun_attr_features_multi_prompt_mean.pt'),
         num_classes=717,
         device=device
     )
