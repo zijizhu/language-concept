@@ -78,6 +78,8 @@ def main():
         params.requires_grad = False
 
     optimizer = optim.Adam(model.linear.parameters(), lr=args.lr)
+    model.to(device=device)
+    criterion.to(device=device)
     
     for epoch in range(args.epochs):
         train_loss, train_acc = train(model, train_loader, criterion, optimizer, device)
