@@ -27,7 +27,7 @@ class CLIPConcept(nn.Module):
         self.linear = nn.Linear(self.query_features.size(0), num_classes)
 
     def forward(self, images: torch.Tensor, return_attr_logits=False):
-        image_features = self.clip.encode_image(images, return_all=True, csa=True)
+        image_features = self.clip.encode_image(images, return_all=True, csa=True).to(dtype=torch.float32)
         image_features /= image_features.norm(dim=-1, keepdim=True)
         image_features = image_features[:, 1:]
         attr_logits = image_features @ self.query_features.T
