@@ -10,6 +10,7 @@ class CLIPConcept(nn.Module):
             # query_features: torch.Tensor | None = None,
             # query_words: list[str] = [],
             num_classes: int = 200,
+            k: int = 3,
             # device: str | torch.device = 'cuda',
             clip_model: str = 'ViT-B/16'
     ):
@@ -29,10 +30,11 @@ class CLIPConcept(nn.Module):
         #             feature /= feature.norm()
         #             query_features.append(feature.unsqueeze(0))
         #     self.register_buffer('query_features', torch.cat(query_features, dim=0))
-        print(self.clip.visual.output_dim)
+        self.k = k
+        self.num_classes = num_classes
 
-        self.prototypes = nn.Parameter(torch.randn(num_classes * 3, self.clip.visual.output_dim, 1, 1))
-        self.fc = nn.Linear(num_classes * 3, num_classes)
+        self.prototypes = nn.Parameter(torch.randn(num_classes * k, self.clip.visual.output_dim, 1, 1))
+        self.fc = nn.Linear(num_classes * k, num_classes, bias=False)
 
         # self.linear = nn.Linear(self.query_features.size(0), num_classes)
 
@@ -51,6 +53,21 @@ class CLIPConcept(nn.Module):
         logits = self.fc(logits)
 
         return logits, max_cosine_sims, cosine_sims, activations
+
+    def _init_fc(self):
+        self.prototype_class_identity = torch.zeros(self.num_classes * self.k, self.num_classes)
+
+        for j in range(self.num_classes * self.k):
+            self.prototype_class_identity[j, j // self.k] = 1
+
+        positive_loc = torch.t(self.prototype_class_identity)
+        negative_loc = 1 - positive_loc
+
+        positive_value = 1
+        negative_value = -0.5
+        self.fc.weight.data.copy_(
+            positive_value * positive_loc
+            + negative_value * negative_loc)
 
 
 def cosine_conv2d(x: torch.Tensor, weight: torch.Tensor):
@@ -81,7 +98,7 @@ class Criterion(nn.Module):
     def clst_criterion(self, cosine_logits: torch.Tensor, targets: torch.Tensor):
         batch_size = cosine_logits.size(0)
         cosine_logits = -cosine_logits.reshape(batch_size, self.num_classes, -1)  # shape: [batch_size, num_classes, k]
-        return torch.mean(cosine_logits[torch.arange(batch_size), targets].min(dim=-1))
+        return torch.mean(cosine_logits[torch.arange(batch_size), targets].min(dim=-1).values)
 
     def sep_criterion(self, cosine_logits: torch.Tensor, targets: torch.Tensor):
         batch_size = cosine_logits.size(0)

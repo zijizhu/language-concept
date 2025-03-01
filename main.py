@@ -17,14 +17,14 @@ def train(model, train_loader, criterion, optimizer, device):
     for images, labels in tqdm(train_loader):
         images, labels = images.to(device), labels.to(device)
 
-        outputs = model(images)
-        loss = criterion(outputs, labels)
+        logits, max_cosine_sims, cosine_sims, activations = model(images)
+        loss = criterion(logits, max_cosine_sims, labels)
         loss.backward()
         optimizer.step()
         optimizer.zero_grad()
         
         total_loss += loss.item()
-        predicted = torch.argmax(outputs, dim=-1)
+        predicted = torch.argmax(logits, dim=-1)
         correct += (predicted == labels).sum().item()
         total += labels.size(0)
     
@@ -39,11 +39,11 @@ def validate(model, test_loader, criterion, device):
     with torch.no_grad():
         for images, labels in tqdm(test_loader):
             images, labels = images.to(device), labels.to(device)
-            outputs = model(images)
-            loss = criterion(outputs, labels)
-            
+            logits, max_cosine_sims, cosine_sims, activations = model(images)
+            loss = criterion(logits, max_cosine_sims, labels)
+
             total_loss += loss.item()
-            predicted = torch.argmax(outputs, dim=-1)
+            predicted = torch.argmax(logits, dim=-1)
             correct += (predicted == labels).sum().item()
             total += labels.size(0)
     
@@ -53,7 +53,7 @@ def validate(model, test_loader, criterion, device):
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--epochs', type=int, default=100, help='Number of training epochs')
-    parser.add_argument('--batch-size', type=int, default=64, help='Batch size for training')
+    parser.add_argument('--batch-size', type=int, default=4, help='Batch size for training')
     parser.add_argument('--lr', type=float, default=0.01, help='Learning rate')
     parser.add_argument('--data-dir', type=str, default='datasets')
 
@@ -76,11 +76,13 @@ def main():
         num_classes=717
         # device=device
     )
-    criterion = Criterion(clst_coef=0.8, sep_coef=0.08)
+    criterion = Criterion(clst_coef=0.8, sep_coef=0.08, num_classes=717)
     for params in model.clip.parameters():
         params.requires_grad = False
+    for params in model.fc.parameters():
+        params.requires_grad = True
 
-    optimizer = optim.Adam(model.linear.parameters(), lr=args.lr)
+    optimizer = optim.Adam([model.prototypes], lr=args.lr)
     model.to(device=device)
     criterion.to(device=device)
     
