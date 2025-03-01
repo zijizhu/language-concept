@@ -6,7 +6,7 @@ import argparse
 from tqdm import tqdm
 
 from data import SUNDataset
-from model import CLIPConcept
+from model import CLIPConcept, Criterion
 
 def train(model, train_loader, criterion, optimizer, device):
     model.train()
@@ -57,6 +57,9 @@ def main():
     parser.add_argument('--lr', type=float, default=0.01, help='Learning rate')
     parser.add_argument('--data-dir', type=str, default='datasets')
 
+    parser.add_argument('--clst-coef', type=float, default=0.8)
+    parser.add_argument('--sep-dir', type=str, default=0.08)
+
     args = parser.parse_args()
     
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -69,11 +72,11 @@ def main():
     test_loader = DataLoader(test_dataset, batch_size=args.batch_size, shuffle=False)
     
     model = CLIPConcept(
-        query_features=torch.load('data/SUN/sun_attr_features_multi_prompt_mean.pt'),
-        num_classes=717,
-        device=device
+        # query_features=torch.load('data/SUN/sun_attr_features_multi_prompt_mean.pt'),
+        num_classes=717
+        # device=device
     )
-    criterion = nn.CrossEntropyLoss()
+    criterion = Criterion(clst_coef=0.8, sep_coef=0.08)
     for params in model.clip.parameters():
         params.requires_grad = False
 
