@@ -110,9 +110,13 @@ class Criterion(nn.Module):
         self.sep_coef = sep_coef
 
     def forward(self, logits: torch.Tensor, cosine_logits: torch.Tensor, targets: torch.Tensor):
-        return (self.xe(logits, targets)
-                + self.clst_coef * self.clst_criterion(cosine_logits, targets)
-                + self.sep_coef * self.sep_criterion(cosine_logits, targets))
+        loss_dict = dict(
+            xe=self.xe(logits, targets),
+            clst=self.clst_coef * self.clst_criterion(cosine_logits, targets),
+            sep=self.sep_coef * self.sep_criterion(cosine_logits, targets)
+        )
+        return sum(loss_dict.values()), loss_dict
+
 
     def clst_criterion(self, cosine_logits: torch.Tensor, targets: torch.Tensor):
         batch_size = cosine_logits.size(0)

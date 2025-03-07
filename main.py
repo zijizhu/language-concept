@@ -15,7 +15,11 @@ from model import CLIPConcept, Criterion
 ## TODO two stage training
 def train(model, train_loader, criterion, optimizer, device):
     model.train()
-    total_loss = 0.0
+    total_losses = dict(
+        xe=0.0,
+        clst=0.0,
+        sep=0.0
+    )
     correct = 0
     total = 0
     
@@ -23,17 +27,21 @@ def train(model, train_loader, criterion, optimizer, device):
         images, labels = images.to(device), labels.to(device)
 
         logits, max_cosine_sims, cosine_sims, activations = model(images)
-        loss = criterion(logits, max_cosine_sims, labels)
+        loss, loss_dict = criterion(logits, max_cosine_sims, labels)
         loss.backward()
         optimizer.step()
         optimizer.zero_grad()
-        
-        total_loss += loss.item()
+
+        for loss_name, loss_value in loss_dict.items():
+            loss_value += loss_dict[loss_name].item()
+
         predicted = torch.argmax(logits, dim=-1)
         correct += (predicted == labels).sum().item()
         total += labels.size(0)
-    
-    return total_loss / len(train_loader), correct / total
+
+    for loss_name, loss_value in total_losses.items():
+        total_losses[loss_name] = loss_value / len(train_loader)
+    return total_losses, correct / total
 
 def validate(model, test_loader, criterion, device):
     model.eval()
@@ -45,7 +53,7 @@ def validate(model, test_loader, criterion, device):
         for images, labels in tqdm(test_loader):
             images, labels = images.to(device), labels.to(device)
             logits, max_cosine_sims, cosine_sims, activations = model(images)
-            loss = criterion(logits, max_cosine_sims, labels)
+            loss, loss_dict = criterion(logits, max_cosine_sims, labels)
 
             total_loss += loss.item()
             predicted = torch.argmax(logits, dim=-1)
@@ -85,8 +93,8 @@ def load_data(dataset_name: str, data_dir: str, batch_size: int):
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--epochs', type=int, default=100, help='Number of training epochs')
-    parser.add_argument('--batch-size', type=int, default=4, help='Batch size for training')
+    parser.add_argument('--epochs', type=int, default=10, help='Number of training epochs')
+    parser.add_argument('--batch-size', type=int, default=128, help='Batch size for training')
     parser.add_argument('--lr', type=float, default=0.01, help='Learning rate')
     parser.add_argument('--data-dir', type=str, default='datasets')
     parser.add_argument('--dataset', type=str, default='CUB', choices=['CUB', 'SUN'])
@@ -119,12 +127,16 @@ def main():
     criterion.to(device=device)
     
     for epoch in range(args.epochs):
-        train_loss, train_acc = train(model, train_loader, criterion, optimizer, device)
-        val_loss, val_acc = validate(model, test_loader, criterion, device)
-        
-        print(f"Epoch {epoch+1}/{args.epochs}: "
-              f"Train Loss: {train_loss:.4f}, Train Acc: {train_acc:.4f} | "
-              f"Val Loss: {val_loss:.4f}, Val Acc: {val_acc:.4f}")
+        train_losses, train_acc = train(model, train_loader, criterion, optimizer, device)
+        val_losses, val_acc = validate(model, test_loader, criterion, device)
+
+        for loss_name, loss_value in train_losses.items():
+            print(f"Train {loss_name}: {loss_value:.4f}")
+        print(f"Train Acc: {train_acc:.4f}")
+
+        for loss_name, loss_value in val_losses.items():
+            print(f"Val {loss_name}: {loss_value:.4f}")
+        print(f"Val Acc: {val_acc:.4f}")
     
     torch.save({k: v.detach().cpu() for k, v in model.state_dict().items()}, "model.pth")
     print("Model saved as model.pth")
