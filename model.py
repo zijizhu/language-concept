@@ -124,4 +124,4 @@ class Criterion(nn.Module):
         cosine_logits = cosine_logits.reshape(batch_size, self.num_classes, -1)  # shape: [batch_size, num_classes, k]
         positives = F.one_hot(targets, num_classes=self.num_classes)
         negative_indices = (1 - positives).nonzero(as_tuple=True)
-        return cosine_logits[negative_indices].reshape(batch_size, self.num_classes, -1).min(dim=-1).values.min(dim=-1).values.mean()
+        return cosine_logits[negative_indices].reshape(batch_size, -1).min(dim=-1).values.mean()
