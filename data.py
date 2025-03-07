@@ -45,7 +45,7 @@ class SUNDataset(Dataset):
         path = self.images[split_idx]
 
         class_name = path.split('/', 1)[-1].rsplit('/', 1)[0]
-        class_name = ' '.join(re.split("_|/", class_name))
+        class_name = ' '.join(re.split("[_/]", class_name))
         img = Image.open(Path(self.data_dir) / "images" / path).convert('RGB')
         class_idx = self.classes[class_name]
 
@@ -60,6 +60,7 @@ attribute_indices = [1, 4, 6, 7, 10, 14, 15, 20, 21, 23, 25, 29, 30, 35, 36, 38,
 class CUBConceptDataset(ImageFolder):
     def __init__(self,
                  image_root: str | Path,
+                 return_attributes: bool = False,
                  transforms: Optional[Callable] = None,
                  target_transform: Optional[Callable] = None):
         super().__init__(
@@ -83,8 +84,13 @@ class CUBConceptDataset(ImageFolder):
             all_attribute_texts = fp.read().splitlines()
         self.attribute_texts = [all_attribute_texts[i] for i in attribute_indices]
 
+        self.return_attributes = return_attributes
+
     def __getitem__(self, index: int):
         im_path, label = self.samples[index]
         im_pt = self.transform(Image.open(im_path).convert("RGB"))
         attr = self.attributes[label]
-        return im_pt, label, attr, index
+        if self.return_attributes:
+            return im_pt, label, attr
+        return im_pt, label
+
