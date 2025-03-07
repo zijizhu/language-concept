@@ -109,7 +109,7 @@ def main():
 
     optimizer = optim.Adam([
         {'params': [model.prototypes], 'lr': 3e-3},
-        {'params': [model.classifier.parameters()], 'lr': 1e-06}
+        {'params': model.classifier.parameters(), 'lr': 1e-06}
     ], lr=args.lr)
 
     for params in model.clip.parameters():
