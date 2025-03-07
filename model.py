@@ -4,15 +4,29 @@ from torch import nn
 import torch.nn.functional as F
 
 
+class ScoreAggregation(nn.Module):
+    def __init__(self, init_val: float = 0.2, num_classes: int = 200, k: int = 5) -> None:
+        super().__init__()
+        self.weights = nn.Parameter(torch.full((num_classes, k,), init_val, dtype=torch.float32))
+
+    def forward(self, x: torch.Tensor):
+        n_classes, n_prototypes = self.weights.shape
+        sa_weights = F.softmax(self.weights, dim=-1) * n_prototypes
+        x = x * sa_weights  # B C K
+        x = x.sum(-1)  # B C
+        return x
+
+
 class CLIPConcept(nn.Module):
     def __init__(
-            self,
-            # query_features: torch.Tensor | None = None,
-            # query_words: list[str] = [],
-            num_classes: int = 200,
-            k: int = 3,
-            # device: str | torch.device = 'cuda',
-            clip_model: str = 'ViT-B/16'
+        self,
+        # query_features: torch.Tensor | None = None,
+        # query_words: list[str] = [],
+        num_classes: int = 200,
+        k: int = 3,
+        # device: str | torch.device = 'cuda',
+        clip_model: str = 'ViT-B/16',
+        score_aggregation: bool = True
     ):
         super().__init__()
         self.clip, _ = clip.load(clip_model, jit=False)
@@ -34,9 +48,12 @@ class CLIPConcept(nn.Module):
         self.num_classes = num_classes
 
         self.prototypes = nn.Parameter(torch.randn(num_classes * k, self.clip.visual.output_dim, 1, 1))
-        self.fc = nn.Linear(num_classes * k, num_classes, bias=False)
-
-        # self.linear = nn.Linear(self.query_features.size(0), num_classes)
+        
+        if score_aggregation:
+            self.classifier = ScoreAggregation(num_classes=num_classes, k=k)
+        else:
+            self.classifier = nn.Linear(num_classes * k, num_classes, bias=False)
+            self._init_classifier()
 
     def forward(self, images: torch.Tensor, return_attr_logits=False):
         image_features = self.clip.encode_image(images, return_all=True, csa=True).to(dtype=torch.float32)
@@ -50,11 +67,11 @@ class CLIPConcept(nn.Module):
 
         max_cosine_sims = F.adaptive_max_pool2d(cosine_sims, (1, 1,)).squeeze()
         logits = F.adaptive_max_pool2d(activations, (1, 1,)).squeeze()
-        logits = self.fc(logits)
+        logits = self.classifier(logits)
 
         return logits, max_cosine_sims, cosine_sims, activations
 
-    def _init_fc(self):
+    def _init_classifier(self):
         self.prototype_class_identity = torch.zeros(self.num_classes * self.k, self.num_classes)
 
         for j in range(self.num_classes * self.k):
@@ -65,9 +82,7 @@ class CLIPConcept(nn.Module):
 
         positive_value = 1
         negative_value = -0.5
-        self.fc.weight.data.copy_(
-            positive_value * positive_loc
-            + negative_value * negative_loc)
+        self.classifier.weight.data.copy_(positive_value * positive_loc + negative_value * negative_loc)
 
 
 def cosine_conv2d(x: torch.Tensor, weight: torch.Tensor):
@@ -105,4 +120,4 @@ class Criterion(nn.Module):
         cosine_logits = cosine_logits.reshape(batch_size, self.num_classes, -1)  # shape: [batch_size, num_classes, k]
         positives = F.one_hot(targets, num_classes=self.num_classes)
         negative_indices = (1 - positives).nonzero(as_tuple=True)
-        return cosine_logits[negative_indices].reshape(batch_size, -1, 3).min(dim=-1).values.min(dim=-1).values.mean()
+        return cosine_logits[negative_indices].reshape(batch_size, self.num_classes, -1).min(dim=-1).values.min(dim=-1).values.mean()

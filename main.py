@@ -1,13 +1,18 @@
+import argparse
+from pathlib import Path
+
 import torch
-import torch.nn as nn
 import torch.optim as optim
 from torch.utils.data import DataLoader
-import argparse
+from torchvision.transforms import Compose, Resize, CenterCrop, ToTensor, Normalize, InterpolationMode
 from tqdm import tqdm
 
-from data import SUNDataset
+from data import SUNDataset, CUBConceptDataset
 from model import CLIPConcept, Criterion
 
+
+## TODO print/log each loss item separately
+## TODO two stage training
 def train(model, train_loader, criterion, optimizer, device):
     model.train()
     total_loss = 0.0
@@ -50,12 +55,41 @@ def validate(model, test_loader, criterion, device):
     return total_loss / len(test_loader), correct / total
 
 
+def load_data(dataset_name: str, data_dir: str, batch_size: int):
+    assert dataset_name in ['CUB', 'SUN']
+    if dataset_name == 'SUN':
+        train_dataset = SUNDataset(data_dir, split='train')
+        val_dataset = SUNDataset(data_dir, split='val')
+        test_dataset = SUNDataset(data_dir, split='test')
+        num_classes = 717
+    else:
+        transforms = Compose([
+            Resize(224, interpolation=InterpolationMode.BICUBIC),
+            CenterCrop(224),
+            ToTensor(),
+            Normalize((0.48145466, 0.4578275, 0.40821073), (0.26862954, 0.26130258, 0.27577711)),
+        ])
+        train_dataset = CUBConceptDataset(
+            Path(data_dir) / 'cub200_cropped' / 'train_cropped_augmented',
+            transforms=transforms
+        )
+        test_dataset = CUBConceptDataset(
+            Path(data_dir) / 'cub200_cropped' / 'test_cropped',
+            transforms=transforms
+        )
+        num_classes = 200
+    train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
+    test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False)
+    return train_loader, test_loader, num_classes
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--epochs', type=int, default=100, help='Number of training epochs')
     parser.add_argument('--batch-size', type=int, default=4, help='Batch size for training')
     parser.add_argument('--lr', type=float, default=0.01, help='Learning rate')
     parser.add_argument('--data-dir', type=str, default='datasets')
+    parser.add_argument('--dataset', type=str, default='CUB', choices=['CUB', 'SUN'])
 
     parser.add_argument('--clst-coef', type=float, default=0.8)
     parser.add_argument('--sep-dir', type=str, default=0.08)
@@ -63,26 +97,24 @@ def main():
     args = parser.parse_args()
     
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    train_dataset = SUNDataset(args.data_dir, split='train')
-    val_dataset = SUNDataset(args.data_dir, split='val')
-    test_dataset = SUNDataset(args.data_dir, split='test')
-    
-    train_loader = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True)
-    val_loader = DataLoader(val_dataset, batch_size=args.batch_size, shuffle=False)
-    test_loader = DataLoader(test_dataset, batch_size=args.batch_size, shuffle=False)
+
+    train_loader, test_loader, num_classes = load_data(args.dataset, args.data_dir, args.batch_size)
     
     model = CLIPConcept(
         # query_features=torch.load('data/SUN/sun_attr_features_multi_prompt_mean.pt'),
-        num_classes=717
+        num_classes=num_classes
         # device=device
     )
-    criterion = Criterion(clst_coef=0.8, sep_coef=0.08, num_classes=717)
+    criterion = Criterion(clst_coef=0.8, sep_coef=0.08, num_classes=num_classes)
+
+    optimizer = optim.Adam([
+        {'params': [model.prototypes], 'lr': 3e-3},
+        {'params': [model.classifier.parameters()], 'lr': 1e-06}
+    ], lr=args.lr)
+
     for params in model.clip.parameters():
         params.requires_grad = False
-    for params in model.fc.parameters():
-        params.requires_grad = True
 
-    optimizer = optim.Adam([model.prototypes], lr=args.lr)
     model.to(device=device)
     criterion.to(device=device)
     
