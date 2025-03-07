@@ -8,10 +8,14 @@ class ScoreAggregation(nn.Module):
     def __init__(self, init_val: float = 0.2, num_classes: int = 200, k: int = 5) -> None:
         super().__init__()
         self.weights = nn.Parameter(torch.full((num_classes, k,), init_val, dtype=torch.float32))
+        self.num_classes = num_classes
 
     def forward(self, x: torch.Tensor):
         n_classes, n_prototypes = self.weights.shape
+        batch_size = x.size(0)
         sa_weights = F.softmax(self.weights, dim=-1) * n_prototypes
+
+        x = x.reshape(batch_size, self.num_classes, -1)
         x = x * sa_weights  # B C K
         x = x.sum(-1)  # B C
         return x
