@@ -28,6 +28,7 @@ class CLIPConcept(nn.Module):
         # query_words: list[str] = [],
         num_classes: int = 200,
         k: int = 3,
+        dim: int = 64,
         # device: str | torch.device = 'cuda',
         clip_model: str = 'ViT-B/16',
         score_aggregation: bool = True
@@ -51,7 +52,13 @@ class CLIPConcept(nn.Module):
         self.k = k
         self.num_classes = num_classes
 
-        self.prototypes = nn.Parameter(torch.randn(num_classes * k, self.clip.visual.output_dim, 1, 1))
+        self.dim = dim
+
+        self.adapter = nn.Sequential(
+            nn.Conv2d(in_channels=self.clip.visual.output_dim, out_channels=dim, kernel_size=1),
+            nn.Sigmoid()
+        )
+        self.prototypes = nn.Parameter(torch.randn(num_classes * k, dim, 1, 1))
         
         if score_aggregation:
             self.classifier = ScoreAggregation(num_classes=num_classes, k=k)
@@ -60,14 +67,16 @@ class CLIPConcept(nn.Module):
             self._init_classifier()
 
     def forward(self, images: torch.Tensor, return_attr_logits=False):
-        image_features = self.clip.encode_image(images, return_all=True, csa=True).to(dtype=torch.float32)
-        image_features = image_features[:, 1:]  # shape: [batch_size, n_patches, dim]
-        dim, patch_size = image_features.size(-1), self.clip.visual.patch_size
-        w = h = images.size(-1) // patch_size
-        image_features = image_features.permute(0, 2, 1).reshape(-1, dim, w, h)
+        features = self.clip.encode_image(images, return_all=True, csa=True).to(dtype=torch.float32)
+        features = features[:, 1:]  # shape: [batch_size, n_patches, dim]
 
-        cosine_sims = cosine_conv2d(image_features, self.prototypes)
-        activations = project2basis(image_features, self.prototypes)
+        dim, patch_size = features.size(-1), self.clip.visual.patch_size
+        w = h = images.size(-1) // patch_size
+        features = features.permute(0, 2, 1).reshape(-1, dim, w, h)
+        features = self.adapter(features)
+
+        cosine_sims = cosine_conv2d(features, self.prototypes)
+        activations = project2basis(features, self.prototypes)
 
         max_cosine_sims = F.adaptive_max_pool2d(cosine_sims, (1, 1,)).squeeze()
         logits = F.adaptive_max_pool2d(activations, (1, 1,)).squeeze()

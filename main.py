@@ -123,7 +123,7 @@ def main():
     criterion = Criterion(clst_coef=-0.8, sep_coef=0.08, num_classes=num_classes)
 
     optimizer = optim.Adam([
-        {'params': [model.prototypes], 'lr': 3e-3},
+        {'params': list(model.adapter.parameters()) + [model.prototypes], 'lr': 3e-3},
         {'params': model.classifier.parameters(), 'lr': 1e-06}
     ], lr=args.lr)
 
