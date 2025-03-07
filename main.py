@@ -15,7 +15,7 @@ from model import CLIPConcept, Criterion
 ## TODO two stage training
 def train(model, train_loader, criterion, optimizer, device):
     model.train()
-    total_losses = dict(
+    train_losses = dict(
         xe=0.0,
         clst=0.0,
         sep=0.0
@@ -33,19 +33,23 @@ def train(model, train_loader, criterion, optimizer, device):
         optimizer.zero_grad()
 
         for loss_name, loss_value in loss_dict.items():
-            loss_value += loss_dict[loss_name].item()
+            train_losses[loss_name] += loss_dict[loss_name].item()
 
         predicted = torch.argmax(logits, dim=-1)
         correct += (predicted == labels).sum().item()
         total += labels.size(0)
 
-    for loss_name, loss_value in total_losses.items():
-        total_losses[loss_name] = loss_value / len(train_loader)
-    return total_losses, correct / total
+    for loss_name, loss_value in train_losses.items():
+        train_losses[loss_name] = loss_value / len(train_loader)
+    return train_losses, correct / total
 
 def validate(model, test_loader, criterion, device):
     model.eval()
-    total_loss = 0.0
+    val_losses = dict(
+        xe=0.0,
+        clst=0.0,
+        sep=0.0
+    )
     correct = 0
     total = 0
     
@@ -55,12 +59,14 @@ def validate(model, test_loader, criterion, device):
             logits, max_cosine_sims, cosine_sims, activations = model(images)
             loss, loss_dict = criterion(logits, max_cosine_sims, labels)
 
-            total_loss += loss.item()
+            for loss_name, loss_value in loss_dict.items():
+                val_losses[loss_name] += loss_dict[loss_name].item()
+
             predicted = torch.argmax(logits, dim=-1)
             correct += (predicted == labels).sum().item()
             total += labels.size(0)
     
-    return total_loss / len(test_loader), correct / total
+    return val_losses, correct / total
 
 
 def load_data(dataset_name: str, data_dir: str, batch_size: int):
