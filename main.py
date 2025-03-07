@@ -65,7 +65,8 @@ def validate(model, test_loader, criterion, device):
             predicted = torch.argmax(logits, dim=-1)
             correct += (predicted == labels).sum().item()
             total += labels.size(0)
-    
+    for loss_name, loss_value in val_losses.items():
+        val_losses[loss_name] = loss_value / len(test_loader)
     return val_losses, correct / total
 
 
@@ -119,7 +120,7 @@ def main():
         num_classes=num_classes
         # device=device
     )
-    criterion = Criterion(clst_coef=0.8, sep_coef=0.08, num_classes=num_classes)
+    criterion = Criterion(clst_coef=-0.8, sep_coef=0.08, num_classes=num_classes)
 
     optimizer = optim.Adam([
         {'params': [model.prototypes], 'lr': 3e-3},
