@@ -69,7 +69,6 @@ class CLIPConcept(nn.Module):
     def forward(self, images: torch.Tensor, return_attr_logits=False):
         features = self.clip.encode_image(images, return_all=True, csa=True).to(dtype=torch.float32)
         features = features[:, 1:]  # shape: [batch_size, n_patches, dim]
-        print('found nan:', torch.isnan(features).any())
 
         dim, patch_size = features.size(-1), self.clip.visual.patch_size
         w = h = images.size(-1) // patch_size

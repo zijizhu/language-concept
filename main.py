@@ -31,6 +31,8 @@ def train(model, train_loader, criterion, optimizer, device):
         optimizer.step()
         optimizer.zero_grad()
 
+        print(loss_dict)
+
         for loss_name, loss_value in loss_dict.items():
             train_losses[loss_name] += loss_dict[loss_name].item()
 
