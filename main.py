@@ -171,15 +171,14 @@ def main():
 
     criterion = Criterion(clst_coef=-0.8, sep_coef=0.08, num_classes=num_classes)
 
-    # optimizer = get_warmup_optimizer(model)
-    optimizer = get_full_optimizer(model)
+    optimizer = get_warmup_optimizer(model)
 
     model.to(device=device)
     criterion.to(device=device)
 
     for epoch in range(args.epochs):
-        # if epoch == 3:
-        #     optimizer = get_full_optimizer(model)
+        if epoch == 3:
+            optimizer = get_full_optimizer(model)
         train_losses, train_acc = train(model, train_loader, criterion, optimizer, device)
 
         val_losses, val_acc = validate(model, test_loader, criterion, device)
