@@ -30,7 +30,7 @@ def train(model, train_loader, criterion, optimizer, device):
         loss.backward()
 
         for name, param in model.named_parameters():
-            if torch.isnan(param.grad).any() and param.requires_grad:
+            if param.requires_grad and torch.isnan(param.gradz).any():
                 print("nan gradient found:", name)
 
         optimizer.step()
