@@ -31,7 +31,7 @@ class CLIPConcept(nn.Module):
         dim: int = 64,
         # device: str | torch.device = 'cuda',
         clip_model: str = 'ViT-B/16',
-        score_aggregation: bool = False
+        score_aggregation: bool = True
     ):
         super().__init__()
         self.clip, _ = clip.load(clip_model, jit=False)
