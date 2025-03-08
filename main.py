@@ -2,6 +2,7 @@ import argparse
 from pathlib import Path
 
 import torch
+from torch import nn
 import torch.optim as optim
 from torch.utils.data import DataLoader
 from torchvision.transforms import Compose, Resize, CenterCrop, ToTensor, Normalize, InterpolationMode
@@ -98,9 +99,36 @@ def load_data(dataset_name: str, data_dir: str, batch_size: int):
     return train_loader, test_loader, num_classes
 
 
+def get_warmup_optimizer(model: nn.Module):
+    optimizer = optim.Adam([
+        {'params': list(model.adapter.parameters()) + [model.prototypes], 'lr': 3e-3},
+        {'params': model.classifier.parameters(), 'lr': 1e-06}
+    ])
+
+    for params in model.clip.parameters():
+        params.requires_grad = False
+
+    return optimizer
+
+
+def get_full_optimizer(model: nn.Module):
+    optimizer = optim.Adam([
+        {'params': model.clip.visual.transformer.resblocks[-1].parameters(), 'lr': 1e-4},
+        {'params': list(model.adapter.parameters()) + [model.prototypes], 'lr': 3e-3},
+        {'params': model.classifier.parameters(), 'lr': 1e-06}
+    ])
+
+    for params in model.clip.parameters():
+        params.requires_grad = False
+    for params in model.clip.visual.transformer.resblocks[-1].parameters():
+        params.requires_grad = True
+
+    return optimizer
+
+
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--epochs', type=int, default=10, help='Number of training epochs')
+    parser.add_argument('--epochs', type=int, default=8, help='Number of training epochs')
     parser.add_argument('--batch-size', type=int, default=128, help='Batch size for training')
     parser.add_argument('--lr', type=float, default=0.01, help='Learning rate')
     parser.add_argument('--data-dir', type=str, default='datasets')
@@ -122,18 +150,14 @@ def main():
     )
     criterion = Criterion(clst_coef=-0.8, sep_coef=0.08, num_classes=num_classes)
 
-    optimizer = optim.Adam([
-        {'params': list(model.adapter.parameters()) + [model.prototypes], 'lr': 3e-3},
-        {'params': model.classifier.parameters(), 'lr': 1e-06}
-    ], lr=args.lr)
-
-    for params in model.clip.parameters():
-        params.requires_grad = False
+    optimizer = get_warmup_optimizer(model)
 
     model.to(device=device)
     criterion.to(device=device)
-    
+
     for epoch in range(args.epochs):
+        if epoch == 3:
+            optimizer = get_full_optimizer(model)
         train_losses, train_acc = train(model, train_loader, criterion, optimizer, device)
         val_losses, val_acc = validate(model, test_loader, criterion, device)
 
