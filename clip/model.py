@@ -246,7 +246,6 @@ class VisionTransformer(nn.Module):
         x = x.permute(1, 0, 2)  # NLD -> LND
         for blk in self.transformer.resblocks[:-1]:
             x = blk(x)
-        print("output of first blocks have nan:", torch.isnan(x).any())
         for blk in self.transformer.resblocks[-1:]:
             x = x + self.custom_attn(blk.attn, blk.ln_1(x), csa=csa)
             print("attn of last block has nan:", torch.isnan(x).any())
@@ -290,6 +289,10 @@ class VisionTransformer(nn.Module):
         _, bsz, embed_dim = x.size()
         head_dim = embed_dim // num_heads
         scale = head_dim ** -0.5
+
+        print("x has nan:", torch.isnan(x).any())
+        print("weight has nan:", torch.isnan(attn_layer.in_proj_weight).any())
+        print("bias has nan:", torch.isnan(attn_layer.in_proj_bias).any())
 
         q, k, v = F.linear(x, attn_layer.in_proj_weight, attn_layer.in_proj_bias).chunk(3, dim=-1)
         q = q.contiguous().view(-1, bsz * num_heads, head_dim).transpose(0, 1)
