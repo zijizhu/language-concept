@@ -29,6 +29,9 @@ def train(model, train_loader, criterion, optimizer, device):
         loss, loss_dict = criterion(logits, max_cosine_sims, labels)
         loss.backward()
 
+        for loss_name, loss_value in loss_dict.items():
+            print(loss_name, loss_value)
+
         for name, param in model.named_parameters():
             if param.requires_grad and torch.isnan(param.grad).any():
                 print("nan gradient found:", name)
