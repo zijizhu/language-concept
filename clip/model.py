@@ -291,7 +291,9 @@ class VisionTransformer(nn.Module):
         scale = head_dim ** -0.5
 
         print("x has nan:", torch.isnan(x).any())
+        print(attn_layer.in_proj_weight)
         print("weight has nan:", torch.isnan(attn_layer.in_proj_weight).any())
+        print(attn_layer.in_proj_bias)
         print("bias has nan:", torch.isnan(attn_layer.in_proj_bias).any())
 
         q, k, v = F.linear(x, attn_layer.in_proj_weight, attn_layer.in_proj_bias).chunk(3, dim=-1)
