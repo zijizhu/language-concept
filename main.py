@@ -36,11 +36,10 @@ def train(model, train_loader, criterion, optimizer, device):
 
         found_nan = False
         for name, param in model.named_parameters():
-            print(name, param.requires_grad)
             if param.requires_grad and torch.isnan(param.grad).any():
                 print("nan gradient found:", name)
                 found_nan = True
-            if name in ['clip.transformer.resblocks.11.attn.in_proj_weight', 'clip.transformer.resblocks.11.attn.in_proj_bias', 'clip.transformer.resblocks.11.attn.out_proj.weight', 'clip.transformer.resblocks.11.attn.out_proj.bias']:
+            if name in ['clip.visual.transformer.resblocks.11.attn.in_proj_weight', 'clip.visual.transformer.resblocks.11.attn.in_proj_bias', 'clip.visual.transformer.resblocks.11.attn.out_proj.weight', 'clip.visual.transformer.resblocks.11.attn.out_proj.bias']:
                 print(name)
                 print(param.requires_grad)
                 print(param.grad)
