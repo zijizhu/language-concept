@@ -28,10 +28,13 @@ def train(model, train_loader, criterion, optimizer, device):
         logits, max_cosine_sims, cosine_sims, activations = model(images)
         loss, loss_dict = criterion(logits, max_cosine_sims, labels)
         loss.backward()
+
+        for name, param in model.named_parameters():
+            if torch.isnan(param.grad).any() and param.requires_grad:
+                print("nan gradient found:", name)
+
         optimizer.step()
         optimizer.zero_grad()
-
-        print(loss_dict)
 
         for loss_name, loss_value in loss_dict.items():
             train_losses[loss_name] += loss_dict[loss_name].item()
@@ -160,9 +163,7 @@ def main():
         # if epoch == 3:
         #     optimizer = get_full_optimizer(model)
         train_losses, train_acc = train(model, train_loader, criterion, optimizer, device)
-        for name, param in model.named_parameters():
-            if torch.isnan(param.grad).any() and param.requires_grad:
-                print("nan gradient found:", name)
+
         val_losses, val_acc = validate(model, test_loader, criterion, device)
 
         for loss_name, loss_value in train_losses.items():
