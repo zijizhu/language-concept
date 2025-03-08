@@ -246,9 +246,13 @@ class VisionTransformer(nn.Module):
         x = x.permute(1, 0, 2)  # NLD -> LND
         for blk in self.transformer.resblocks[:-1]:
             x = blk(x)
+        print("output of first blocks have nan:", torch.isnan(x).any())
         for blk in self.transformer.resblocks[-1:]:
             x = x + self.custom_attn(blk.attn, blk.ln_1(x), csa=csa)
+            print("attn of last block has nan:", torch.isnan(x).any())
             x = x + blk.mlp(blk.ln_2(x))
+        print("output of last block has nan:", torch.isnan(x).any())
+
         x = x.permute(1, 0, 2)  # LND -> NLD
             
         if return_all:
