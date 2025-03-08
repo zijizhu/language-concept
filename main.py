@@ -27,6 +27,7 @@ def train(model, train_loader, criterion, optimizer, device):
 
         logits, max_cosine_sims, cosine_sims, activations = model(images)
         loss, loss_dict = criterion(logits, max_cosine_sims, labels)
+        loss.retain_grad()
         loss.backward()
 
         for loss_name, loss_value in loss_dict.items():
