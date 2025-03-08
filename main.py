@@ -38,7 +38,7 @@ def train(model, train_loader, criterion, optimizer, device):
                 print("nan gradient found:", name)
                 found_nan = True
             if name in ['clip.visual.transformer.resblocks.11.attn.in_proj_weight', 'clip.visual.transformer.resblocks.11.attn.in_proj_bias', 'clip.visual.transformer.resblocks.11.attn.out_proj.weight', 'clip.visual.transformer.resblocks.11.attn.out_proj.bias']:
-                print(name)
+                print(name, param.dtype)
                 print('min', torch.min(param.grad), 'max', torch.max(param.grad))
                 print()
         if found_nan:
