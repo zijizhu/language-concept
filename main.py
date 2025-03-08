@@ -27,11 +27,12 @@ def train(model, train_loader, criterion, optimizer, device):
 
         logits, max_cosine_sims, cosine_sims, activations = model(images)
         loss, loss_dict = criterion(logits, max_cosine_sims, labels)
-        loss.retain_grad()
         loss.backward()
 
         for loss_name, loss_value in loss_dict.items():
             print(loss_name, loss_value)
+
+        print(model.prototypes.grad)
 
         found_nan = False
         for name, param in model.named_parameters():
