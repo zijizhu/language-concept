@@ -139,10 +139,10 @@ def get_full_optimizer(model: nn.Module):
 
     return optimizer
 
-def convert_models_to_fp32(model):
+def convert_models_to_fp32(model: nn.Module):
     for p in model.parameters():
         p.data = p.data.float()
-        p.grad.data = p.grad.data.float()
+        # p.grad.data = p.grad.data.float()
 
 
 def main():
