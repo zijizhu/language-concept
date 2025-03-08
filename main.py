@@ -41,6 +41,7 @@ def train(model, train_loader, criterion, optimizer, device):
                 found_nan = True
             if name in ['clip.transformer.resblocks.11.attn.in_proj_weight', 'clip.transformer.resblocks.11.attn.in_proj_bias', 'clip.transformer.resblocks.11.attn.out_proj.weight', 'clip.transformer.resblocks.11.attn.out_proj.bias']:
                 print(name)
+                print(param.requires_grad)
                 print(param.grad)
                 print()
         if found_nan:
