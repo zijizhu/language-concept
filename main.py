@@ -32,9 +32,13 @@ def train(model, train_loader, criterion, optimizer, device):
         for loss_name, loss_value in loss_dict.items():
             print(loss_name, loss_value)
 
+        found_nan = False
         for name, param in model.named_parameters():
             if param.requires_grad and torch.isnan(param.grad).any():
                 print("nan gradient found:", name)
+                found_nan = True
+        if found_nan:
+            exit(1)
 
         optimizer.step()
         optimizer.zero_grad()
