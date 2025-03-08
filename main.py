@@ -32,8 +32,6 @@ def train(model, train_loader, criterion, optimizer, device):
         for loss_name, loss_value in loss_dict.items():
             print(loss_name, loss_value)
 
-        print(model.prototypes.grad)
-
         found_nan = False
         for name, param in model.named_parameters():
             if param.requires_grad and torch.isnan(param.grad).any():
@@ -41,8 +39,7 @@ def train(model, train_loader, criterion, optimizer, device):
                 found_nan = True
             if name in ['clip.visual.transformer.resblocks.11.attn.in_proj_weight', 'clip.visual.transformer.resblocks.11.attn.in_proj_bias', 'clip.visual.transformer.resblocks.11.attn.out_proj.weight', 'clip.visual.transformer.resblocks.11.attn.out_proj.bias']:
                 print(name)
-                print(param.requires_grad)
-                print(param.grad)
+                print('min', torch.min(param.grad), 'max', torch.max(param.grad))
                 print()
         if found_nan:
             exit(1)
