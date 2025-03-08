@@ -137,7 +137,8 @@ def get_full_optimizer(model: nn.Module):
 
     for params in model.clip.parameters():
         params.requires_grad = False
-    for params in model.clip.visual.transformer.resblocks[-1].parameters():
+    for name, params in model.clip.visual.transformer.resblocks[-1].named_parameters():
+        print(name)
         params.requires_grad = True
 
     return optimizer
