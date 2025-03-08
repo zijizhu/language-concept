@@ -36,6 +36,7 @@ def train(model, train_loader, criterion, optimizer, device):
 
         found_nan = False
         for name, param in model.named_parameters():
+            print(name, param.requires_grad)
             if param.requires_grad and torch.isnan(param.grad).any():
                 print("nan gradient found:", name)
                 found_nan = True
@@ -137,8 +138,7 @@ def get_full_optimizer(model: nn.Module):
 
     for params in model.clip.parameters():
         params.requires_grad = False
-    for name, params in model.clip.visual.transformer.resblocks[-1].named_parameters():
-        print(name)
+    for params in model.clip.visual.transformer.resblocks[-1].parameters():
         params.requires_grad = True
 
     return optimizer
