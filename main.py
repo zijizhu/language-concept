@@ -139,6 +139,11 @@ def get_full_optimizer(model: nn.Module):
 
     return optimizer
 
+def convert_models_to_fp32(model):
+    for p in model.parameters():
+        p.data = p.data.float()
+        p.grad.data = p.grad.data.float()
+
 
 def main():
     parser = argparse.ArgumentParser()
@@ -162,6 +167,8 @@ def main():
         num_classes=num_classes
         # device=device
     )
+    convert_models_to_fp32(model)
+
     criterion = Criterion(clst_coef=-0.8, sep_coef=0.08, num_classes=num_classes)
 
     # optimizer = get_warmup_optimizer(model)
