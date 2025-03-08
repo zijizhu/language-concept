@@ -70,14 +70,14 @@ class CLIPConcept(nn.Module):
 
     def forward(self, images: torch.Tensor, return_attr_logits=False):
         features = self.clip.encode_image(images, return_all=True, csa=True).to(dtype=torch.float32)
-        print("features have nan:", torch.isnan(features).any())
+        # print("features have nan:", torch.isnan(features).any())
         features = features[:, 1:]  # shape: [batch_size, n_patches, dim]
 
         dim, patch_size = features.size(-1), self.clip.visual.patch_size
         w = h = images.size(-1) // patch_size
         features = features.permute(0, 2, 1).reshape(-1, dim, w, h)
         features = self.adapter(features)
-        print("adapted features have nan:", torch.isnan(features).any())
+        # print("adapted features have nan:", torch.isnan(features).any())
 
         cosine_sims = cosine_conv2d(features, self.prototypes)
         activations = project2basis(features, self.prototypes)

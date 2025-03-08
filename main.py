@@ -29,20 +29,20 @@ def train(model, train_loader, criterion, optimizer, device):
         loss, loss_dict = criterion(logits, max_cosine_sims, labels)
         loss.backward()
 
-        for loss_name, loss_value in loss_dict.items():
-            print(loss_name, loss_value)
+        # for loss_name, loss_value in loss_dict.items():
+        #     print(loss_name, loss_value)
 
-        found_nan = False
-        for name, param in model.named_parameters():
-            if param.requires_grad and torch.isnan(param.grad).any():
-                print("nan gradient found:", name)
-                found_nan = True
-            if name in ['clip.visual.transformer.resblocks.11.attn.in_proj_weight', 'clip.visual.transformer.resblocks.11.attn.in_proj_bias', 'clip.visual.transformer.resblocks.11.attn.out_proj.weight', 'clip.visual.transformer.resblocks.11.attn.out_proj.bias']:
-                print(name, param.dtype)
-                print('min', torch.min(param.grad), 'max', torch.max(param.grad))
-                print()
-        if found_nan:
-            exit(1)
+        # found_nan = False
+        # for name, param in model.named_parameters():
+        #     # if param.requires_grad and torch.isnan(param.grad).any():
+        #     #     print("nan gradient found:", name)
+        #     #     found_nan = True
+        #     # if name in ['clip.visual.transformer.resblocks.11.attn.in_proj_weight', 'clip.visual.transformer.resblocks.11.attn.in_proj_bias', 'clip.visual.transformer.resblocks.11.attn.out_proj.weight', 'clip.visual.transformer.resblocks.11.attn.out_proj.bias']:
+        #     #     print(name, param.dtype)
+        #     #     print('min', torch.min(param.grad), 'max', torch.max(param.grad))
+        #     #     print()
+        # if found_nan:
+        #     exit(1)
 
         optimizer.step()
         optimizer.zero_grad()
@@ -127,7 +127,7 @@ def get_warmup_optimizer(model: nn.Module):
 
 def get_full_optimizer(model: nn.Module):
     optimizer = optim.Adam([
-        {'params': model.clip.visual.transformer.resblocks[-1].parameters(), 'lr': 0.0001},
+        {'params': model.clip.visual.transformer.resblocks[-1].parameters(), 'lr': 1e-5},
         {'params': list(model.adapter.parameters()) + [model.prototypes], 'lr': 3e-3},
         {'params': model.classifier.parameters(), 'lr': 1e-06}
     ])

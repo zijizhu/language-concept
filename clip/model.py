@@ -248,9 +248,9 @@ class VisionTransformer(nn.Module):
             x = blk(x)
         for blk in self.transformer.resblocks[-1:]:
             x = x + self.custom_attn(blk.attn, blk.ln_1(x), csa=csa)
-            print("attn of last block has nan:", torch.isnan(x).any())
+            # print("attn of last block has nan:", torch.isnan(x).any())
             x = x + blk.mlp(blk.ln_2(x))
-        print("output of last block has nan:", torch.isnan(x).any())
+        # print("output of last block has nan:", torch.isnan(x).any())
 
         x = x.permute(1, 0, 2)  # LND -> NLD
             
@@ -290,25 +290,25 @@ class VisionTransformer(nn.Module):
         head_dim = embed_dim // num_heads
         scale = head_dim ** -0.5
 
-        print("x has nan:", torch.isnan(x).any())
-        print(attn_layer.in_proj_weight)
-        print("weight has nan:", torch.isnan(attn_layer.in_proj_weight).any())
-        print(attn_layer.in_proj_bias)
-        print("bias has nan:", torch.isnan(attn_layer.in_proj_bias).any())
+        # print("x has nan:", torch.isnan(x).any())
+        # print(attn_layer.in_proj_weight)
+        # print("weight has nan:", torch.isnan(attn_layer.in_proj_weight).any())
+        # print(attn_layer.in_proj_bias)
+        # print("bias has nan:", torch.isnan(attn_layer.in_proj_bias).any())
 
         q, k, v = F.linear(x, attn_layer.in_proj_weight, attn_layer.in_proj_bias).chunk(3, dim=-1)
         q = q.contiguous().view(-1, bsz * num_heads, head_dim).transpose(0, 1)
         k = k.contiguous().view(-1, bsz * num_heads, head_dim).transpose(0, 1)
         v = v.contiguous().view(-1, bsz * num_heads, head_dim).transpose(0, 1)
-        print("q has nan:", torch.isnan(q).any())
-        print("k has nan:", torch.isnan(k).any())
-        print("v has nan:", torch.isnan(v).any())
+        # print("q has nan:", torch.isnan(q).any())
+        # print("k has nan:", torch.isnan(k).any())
+        # print("v has nan:", torch.isnan(v).any())
 
         if csa:
             q_attn = torch.bmm(q, q.transpose(1, 2)) * scale
             k_attn = torch.bmm(k, k.transpose(1, 2)) * scale
             attn_weights = F.softmax(q_attn, dim=-1) + F.softmax(k_attn, dim=-1)
-            print("attn_weights has nan:", torch.isnan(v).any())
+            # print("attn_weights has nan:", torch.isnan(v).any())
         else:
             attn_weights = torch.bmm(q * scale, k.transpose(1, 2))
             attn_weights = F.softmax(attn_weights, dim=-1)
@@ -320,7 +320,7 @@ class VisionTransformer(nn.Module):
         attn_output = attn_output.transpose(0, 1).contiguous().view(-1, bsz, embed_dim)
         attn_output = attn_layer.out_proj(attn_output)
 
-        print("attn_output has nan:", torch.isnan(attn_output).any())
+        # print("attn_output has nan:", torch.isnan(attn_output).any())
 
         if with_attn:
             return attn_output, attn_weights
