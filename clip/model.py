@@ -295,11 +295,15 @@ class VisionTransformer(nn.Module):
         q = q.contiguous().view(-1, bsz * num_heads, head_dim).transpose(0, 1)
         k = k.contiguous().view(-1, bsz * num_heads, head_dim).transpose(0, 1)
         v = v.contiguous().view(-1, bsz * num_heads, head_dim).transpose(0, 1)
+        print("q has nan:", torch.isnan(q).any())
+        print("k has nan:", torch.isnan(k).any())
+        print("v has nan:", torch.isnan(v).any())
 
         if csa:
             q_attn = torch.bmm(q, q.transpose(1, 2)) * scale
             k_attn = torch.bmm(k, k.transpose(1, 2)) * scale
             attn_weights = F.softmax(q_attn, dim=-1) + F.softmax(k_attn, dim=-1)
+            print("attn_weights has nan:", torch.isnan(v).any())
         else:
             attn_weights = torch.bmm(q * scale, k.transpose(1, 2))
             attn_weights = F.softmax(attn_weights, dim=-1)
@@ -310,6 +314,8 @@ class VisionTransformer(nn.Module):
         attn_output = torch.bmm(attn_weights, v)
         attn_output = attn_output.transpose(0, 1).contiguous().view(-1, bsz, embed_dim)
         attn_output = attn_layer.out_proj(attn_output)
+
+        print("attn_output has nan:", torch.isnan(attn_output).any())
 
         if with_attn:
             return attn_output, attn_weights
