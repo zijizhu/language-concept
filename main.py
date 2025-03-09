@@ -173,7 +173,7 @@ def main():
 
     criterion = Criterion(clst_coef=-0.8, sep_coef=0.08, num_classes=num_classes)
 
-    optimizer = get_full_optimizer(model)
+    optimizer = get_warmup_optimizer(model)
 
     model.to(device=device)
     criterion.to(device=device)
