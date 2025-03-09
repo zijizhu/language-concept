@@ -61,6 +61,7 @@ class CUBConceptDataset(ImageFolder):
     def __init__(self,
                  image_root: str | Path,
                  return_attributes: bool = False,
+                 return_raw_imgs: bool = False,
                  transforms: Optional[Callable] = None,
                  target_transform: Optional[Callable] = None):
         super().__init__(
@@ -85,12 +86,17 @@ class CUBConceptDataset(ImageFolder):
         self.attribute_texts = [all_attribute_texts[i] for i in attribute_indices]
 
         self.return_attributes = return_attributes
+        self.return_raw_imgs = return_raw_imgs
 
     def __getitem__(self, index: int):
         im_path, label = self.samples[index]
-        im_pt = self.transform(Image.open(im_path).convert("RGB"))
+        im = Image.open(im_path).convert("RGB")
+        im_pt = self.transform(im)
         attr = self.attributes[label]
+        return_data = [im_pt, label]
         if self.return_attributes:
-            return im_pt, label, attr
-        return im_pt, label
+            return_data.append(attr)
+        if self.return_raw_imgs:
+            return_data.append(im)
+        return tuple(return_data)
 

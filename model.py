@@ -31,7 +31,7 @@ class CLIPConcept(nn.Module):
         dim: int = 64,
         # device: str | torch.device = 'cuda',
         clip_model: str = 'ViT-B/16',
-        score_aggregation: bool = False
+        score_aggregation: bool = True
     ):
         super().__init__()
         self.clip, _ = clip.load(clip_model, jit=False)
@@ -125,8 +125,8 @@ class Criterion(nn.Module):
     def forward(self, logits: torch.Tensor, cosine_logits: torch.Tensor, targets: torch.Tensor):
         loss_dict = dict(
             xe=self.xe(logits, targets),
-            # clst=self.clst_coef * self.clst_criterion(cosine_logits, targets),
-            # sep=self.sep_coef * self.sep_criterion(cosine_logits, targets)
+            clst=self.clst_coef * self.clst_criterion(cosine_logits, targets),
+            sep=self.sep_coef * self.sep_criterion(cosine_logits, targets)
         )
         return sum(loss_dict.values()), loss_dict
 
