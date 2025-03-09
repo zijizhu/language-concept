@@ -1,5 +1,6 @@
 import argparse
 from pathlib import Path
+from itertools import chain
 
 import torch
 from torch import nn
@@ -127,7 +128,7 @@ def get_warmup_optimizer(model: nn.Module):
 
 def get_full_optimizer(model: nn.Module):
     optimizer = optim.Adam([
-        {'params': model.clip.visual.transformer.resblocks[-1].parameters(), 'lr': 1e-5},
+        {'params': chain(model.clip.visual.transformer.resblocks[-1].parameters(), model.clip.visual.ln_post.parameters()), 'lr': 1e-4},
         {'params': list(model.adapter.parameters()) + [model.prototypes], 'lr': 3e-3},
         {'params': model.classifier.parameters(), 'lr': 1e-06}
     ])
@@ -136,13 +137,14 @@ def get_full_optimizer(model: nn.Module):
         params.requires_grad = False
     for params in model.clip.visual.transformer.resblocks[-1].parameters():
         params.requires_grad = True
+    for params in model.clip.visual.ln_post.parameters():
+        params.requires_grad = True
 
     return optimizer
 
 def convert_models_to_fp32(model: nn.Module):
     for p in model.parameters():
         p.data = p.data.float()
-        # p.grad.data = p.grad.data.float()
 
 
 def main():
@@ -171,7 +173,7 @@ def main():
 
     criterion = Criterion(clst_coef=-0.8, sep_coef=0.08, num_classes=num_classes)
 
-    optimizer = get_warmup_optimizer(model)
+    optimizer = get_full_optimizer(model)
 
     model.to(device=device)
     criterion.to(device=device)
