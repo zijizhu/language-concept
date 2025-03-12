@@ -23,15 +23,15 @@ class ScoreAggregation(nn.Module):
 
 class CLIPConcept(nn.Module):
     def __init__(
-        self,
-        # query_features: torch.Tensor | None = None,
-        # query_words: list[str] = [],
-        num_classes: int = 200,
-        k: int = 3,
-        dim: int = 64,
-        # device: str | torch.device = 'cuda',
-        clip_model: str = 'ViT-B/16',
-        score_aggregation: bool = True
+            self,
+            # query_features: torch.Tensor | None = None,
+            # query_words: list[str] = [],
+            num_classes: int = 200,
+            k: int = 3,
+            dim: int = 64,
+            # device: str | torch.device = 'cuda',
+            clip_model: str = 'ViT-B/16',
+            score_aggregation: bool = True
     ):
         super().__init__()
         self.clip, _ = clip.load(clip_model, jit=False)
@@ -61,14 +61,14 @@ class CLIPConcept(nn.Module):
         self.prototypes = nn.Parameter(torch.randn(num_classes * k, dim, 1, 1))
 
         nn.init.trunc_normal_(self.prototypes, std=0.02)
-        
+
         if score_aggregation:
             self.classifier = ScoreAggregation(num_classes=num_classes, k=k)
         else:
             self.classifier = nn.Linear(num_classes * k, num_classes, bias=False)
             self._init_classifier()
 
-    def forward(self, images: torch.Tensor):
+    def forward(self, images: torch.Tensor, return_attr_logits=False):
         features = self.clip.encode_image(images, return_all=True, csa=True).to(dtype=torch.float32)
         # print("features have nan:", torch.isnan(features).any())
         features = features[:, 1:]  # shape: [batch_size, n_patches, dim]
@@ -101,9 +101,6 @@ class CLIPConcept(nn.Module):
         negative_value = -0.5
         self.classifier.weight.data.copy_(positive_value * positive_loc + negative_value * negative_loc)
 
-    def normalize_prototypes(self):
-        self.prototypes.data = F.normalize(self.prototypes, p=2, dim=1).data
-
 
 def cosine_conv2d(x: torch.Tensor, weight: torch.Tensor):
     x = F.normalize(x, p=2, dim=1)
@@ -132,7 +129,6 @@ class Criterion(nn.Module):
             sep=self.sep_coef * self.sep_criterion(cosine_logits, targets)
         )
         return sum(loss_dict.values()), loss_dict
-
 
     def clst_criterion(self, cosine_logits: torch.Tensor, targets: torch.Tensor):
         batch_size = cosine_logits.size(0)

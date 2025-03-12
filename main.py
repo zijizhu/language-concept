@@ -22,7 +22,7 @@ def train(model, train_loader, criterion, optimizer, device):
     )
     correct = 0
     total = 0
-    
+
     for images, labels in tqdm(train_loader):
         images, labels = images.to(device), labels.to(device)
 
@@ -32,9 +32,6 @@ def train(model, train_loader, criterion, optimizer, device):
 
         optimizer.step()
         optimizer.zero_grad()
-
-        # with torch.no_grad():
-        #     model.normalize_prototypes()
 
         for loss_name, loss_value in loss_dict.items():
             train_losses[loss_name] += loss_dict[loss_name].item()
@@ -47,6 +44,7 @@ def train(model, train_loader, criterion, optimizer, device):
         train_losses[loss_name] = loss_value / len(train_loader)
     return train_losses, correct / total
 
+
 def validate(model, test_loader, criterion, device):
     model.eval()
     val_losses = dict(
@@ -56,7 +54,7 @@ def validate(model, test_loader, criterion, device):
     )
     correct = 0
     total = 0
-    
+
     with torch.no_grad():
         for images, labels in tqdm(test_loader):
             images, labels = images.to(device), labels.to(device)
@@ -116,7 +114,8 @@ def get_warmup_optimizer(model: nn.Module):
 
 def get_full_optimizer(model: nn.Module):
     optimizer = optim.Adam([
-        {'params': chain(model.clip.visual.transformer.resblocks[-1].parameters(), model.clip.visual.ln_post.parameters()), 'lr': 1e-4},
+        {'params': chain(model.clip.visual.transformer.resblocks[-1].parameters(),
+                         model.clip.visual.ln_post.parameters()), 'lr': 1e-4},
         {'params': list(model.adapter.parameters()) + [model.prototypes], 'lr': 3e-3},
         {'params': model.classifier.parameters(), 'lr': 1e-06}
     ])
@@ -130,6 +129,7 @@ def get_full_optimizer(model: nn.Module):
 
     return optimizer
 
+
 def convert_models_to_fp32(model: nn.Module):
     for p in model.parameters():
         p.data = p.data.float()
@@ -142,37 +142,33 @@ def main():
     parser.add_argument('--lr', type=float, default=0.01, help='Learning rate')
     parser.add_argument('--data-dir', type=str, default='datasets')
     parser.add_argument('--dataset', type=str, default='CUB', choices=['CUB', 'SUN'])
-    parser.add_argument('--k', type=int, default=10, help='Number of prototypes per class')
-
 
     parser.add_argument('--clst-coef', type=float, default=0.8)
     parser.add_argument('--sep-dir', type=str, default=0.08)
 
     args = parser.parse_args()
-    
+
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     train_loader, test_loader, num_classes = load_data(args.dataset, args.data_dir, args.batch_size)
-    
+
     model = CLIPConcept(
         # query_features=torch.load('data/SUN/sun_attr_features_multi_prompt_mean.pt'),
-        num_classes=num_classes,
-        k=args.k
+        num_classes=num_classes
         # device=device
     )
     convert_models_to_fp32(model)
 
     criterion = Criterion(clst_coef=-0.8, sep_coef=0.08, num_classes=num_classes)
 
-    # optimizer = get_warmup_optimizer(model)
-    optimizer = get_full_optimizer(model)
+    optimizer = get_warmup_optimizer(model)
 
     model.to(device=device)
     criterion.to(device=device)
 
     for epoch in range(args.epochs):
-        # if epoch == 3:
-        #     optimizer = get_full_optimizer(model)
+        if epoch == 3:
+            optimizer = get_full_optimizer(model)
         train_losses, train_acc = train(model, train_loader, criterion, optimizer, device)
 
         val_losses, val_acc = validate(model, test_loader, criterion, device)
@@ -184,9 +180,10 @@ def main():
         for loss_name, loss_value in val_losses.items():
             print(f"Val {loss_name}: {loss_value:.4f}")
         print(f"Val Acc: {val_acc:.4f}")
-    
+
     torch.save({k: v.detach().cpu() for k, v in model.state_dict().items()}, "model.pth")
     print("Model saved as model.pth")
+
 
 if __name__ == "__main__":
     main()
