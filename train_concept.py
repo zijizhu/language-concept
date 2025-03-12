@@ -111,8 +111,9 @@ def get_warmup_optimizer(model: nn.Module):
         {'params': list(model.adapter.parameters()) + [model.prototypes], 'lr': 3e-3},
         {'params': model.classifier.parameters(), 'lr': 1e-04}
     ])
-
-    for params in model.clip.parameters():
+    for params in model.parameters():
+        params.requires_grad = True
+    for params in model.backbone.parameters():
         params.requires_grad = False
 
     return optimizer
@@ -120,17 +121,12 @@ def get_warmup_optimizer(model: nn.Module):
 
 def get_full_optimizer(model: nn.Module):
     optimizer = optim.Adam([
-        {'params': chain(model.clip.visual.transformer.resblocks[-1].parameters(),
-                         model.clip.visual.ln_post.parameters()), 'lr': 1e-4},
+        {'params': model.backbone.parameters(), 'lr': 1e-4},
         {'params': list(model.adapter.parameters()) + [model.prototypes], 'lr': 3e-3},
         {'params': model.classifier.parameters(), 'lr': 1e-04}
     ])
 
-    for params in model.clip.parameters():
-        params.requires_grad = False
-    for params in model.clip.visual.transformer.resblocks[-1].parameters():
-        params.requires_grad = True
-    for params in model.clip.visual.ln_post.parameters():
+    for params in model.parameters():
         params.requires_grad = True
 
     return optimizer
