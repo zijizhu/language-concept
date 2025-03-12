@@ -5,23 +5,6 @@ import torch.nn.functional as F
 from torchvision.models import densenet121, DenseNet121_Weights
 
 
-class ScoreAggregation(nn.Module):
-    def __init__(self, init_val: float = 0.2, num_classes: int = 200, k: int = 5) -> None:
-        super().__init__()
-        self.weights = nn.Parameter(torch.full((num_classes, k,), init_val, dtype=torch.float32))
-        self.num_classes = num_classes
-
-    def forward(self, x: torch.Tensor):
-        n_classes, n_prototypes = self.weights.shape
-        batch_size = x.size(0)
-        sa_weights = F.softmax(self.weights, dim=-1) * n_prototypes
-
-        x = x.reshape(batch_size, self.num_classes, -1)
-        x = x * sa_weights  # B C K
-        x = x.sum(-1)  # B C
-        return x
-
-
 class CLIPConcept(nn.Module):
     def __init__(
             self,
@@ -36,14 +19,15 @@ class CLIPConcept(nn.Module):
             score_aggregation: bool = True
     ):
         super().__init__()
-        self.backbone = nn.Sequential(*list(densenet121(weights=DenseNet121_Weights.DEFAULT).children())[:-2])
+        backbone = densenet121(weights=DenseNet121_Weights.DEFAULT)
+        self.backbone = nn.Sequential(*list(backbone.children())[:-1])
         self.k = k
         self.num_classes = num_classes
         self.num_concepts = num_concepts
         self.dim = dim
 
         self.adapter = nn.Sequential(
-            nn.Conv2d(in_channels=self.clip.visual.output_dim, out_channels=dim, kernel_size=1),
+            nn.Conv2d(in_channels=backbone.classifier.in_features, out_channels=dim, kernel_size=1),
             nn.Sigmoid()
         )
         self.prototypes = nn.Parameter(torch.randn(num_concepts * k, dim, 1, 1))
@@ -53,24 +37,17 @@ class CLIPConcept(nn.Module):
         self.classifier = nn.Linear(num_concepts * k, num_classes, bias=False)
 
     def forward(self, images: torch.Tensor):
-        features = self.clip.encode_image(images, return_all=True, csa=True).to(dtype=torch.float32)
-        # print("features have nan:", torch.isnan(features).any())
-        features = features[:, 1:]  # shape: [batch_size, n_patches, dim]
-
-        dim, patch_size = features.size(-1), self.clip.visual.patch_size
-        w = h = images.size(-1) // patch_size
-        features = features.permute(0, 2, 1).reshape(-1, dim, w, h)
+        features = self.backbone(images)  # shape: [batch_size, dim, w, h]
         features = self.adapter(features)
-        # print("adapted features have nan:", torch.isnan(features).any())
 
         cosine_sims = cosine_conv2d(features, self.prototypes)
         activations = project2basis(features, self.prototypes)
 
         max_cosine_sims = F.adaptive_max_pool2d(cosine_sims, (1, 1,)).squeeze()
-        logits = F.adaptive_max_pool2d(activations, (1, 1,)).squeeze()
-        logits = self.classifier(logits)
+        concept_logits = F.adaptive_max_pool2d(activations, (1, 1,)).squeeze()
+        logits = self.classifier(concept_logits)
 
-        return logits, max_cosine_sims, cosine_sims, activations
+        return logits, max_cosine_sims, concept_logits, cosine_sims, activations
 
     def _init_classifier(self):
         self.prototype_class_identity = torch.zeros(self.num_classes * self.k, self.num_classes)
@@ -101,30 +78,31 @@ def project2basis(x: torch.Tensor, weight: torch.Tensor):
 
 
 class Criterion(nn.Module):
-    def __init__(self, clst_coef: float, sep_coef: float, num_classes: int = 200):
+    def __init__(self, clst_coef: float, sep_coef: float, num_concepts: int = 112):
         super().__init__()
-        self.num_classes = num_classes
+        self.num_concepts = num_concepts
         self.xe = nn.CrossEntropyLoss()
 
         self.clst_coef = clst_coef
         self.sep_coef = sep_coef
 
-    def forward(self, logits: torch.Tensor, cosine_logits: torch.Tensor, targets: torch.Tensor):
+    def forward(self, logits: torch.Tensor, cosine_logits: torch.Tensor, targets: torch.Tensor, concept_targets: torch.Tensor):
         loss_dict = dict(
             xe=self.xe(logits, targets),
-            clst=self.clst_coef * self.clst_criterion(cosine_logits, targets),
-            sep=self.sep_coef * self.sep_criterion(cosine_logits, targets)
+            clst=self.clst_coef * self.clst_criterion(cosine_logits, concept_targets),
+            sep=self.sep_coef * self.sep_criterion(cosine_logits, concept_targets)
         )
         return sum(loss_dict.values()), loss_dict
 
-    def clst_criterion(self, cosine_logits: torch.Tensor, targets: torch.Tensor):
+    def clst_criterion(self, cosine_logits: torch.Tensor, concept_targets: torch.Tensor):
         batch_size = cosine_logits.size(0)
-        cosine_logits = -cosine_logits.reshape(batch_size, self.num_classes, -1)  # shape: [batch_size, num_classes, k]
-        return torch.mean(cosine_logits[torch.arange(batch_size), targets].min(dim=-1).values)
+        cosine_logits = cosine_logits.reshape(batch_size, self.num_concepts, -1)  # shape: [batch_size, num_classes, k]
+        positive_indices = concept_targets.float().nonzero(as_tuple=True)
+        return cosine_logits[positive_indices].min(dim=-1).values.mean()
 
-    def sep_criterion(self, cosine_logits: torch.Tensor, targets: torch.Tensor):
+    def sep_criterion(self, cosine_logits: torch.Tensor, concept_targets: torch.Tensor):
         batch_size = cosine_logits.size(0)
-        cosine_logits = cosine_logits.reshape(batch_size, self.num_classes, -1)  # shape: [batch_size, num_classes, k]
-        positives = F.one_hot(targets, num_classes=self.num_classes)
+        cosine_logits = cosine_logits.reshape(batch_size, self.num_concepts, -1)  # shape: [batch_size, num_classes, k]
+        positives = concept_targets.float()
         negative_indices = (1 - positives).nonzero(as_tuple=True)
         return cosine_logits[negative_indices].reshape(batch_size, -1).min(dim=-1).values.mean()
