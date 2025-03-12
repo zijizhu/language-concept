@@ -33,8 +33,8 @@ def train(model, train_loader, criterion, optimizer, device):
         optimizer.step()
         optimizer.zero_grad()
 
-        with torch.no_grad():
-            model.normalize_prototypes()
+        # with torch.no_grad():
+        #     model.normalize_prototypes()
 
         for loss_name, loss_value in loss_dict.items():
             train_losses[loss_name] += loss_dict[loss_name].item()
