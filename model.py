@@ -102,7 +102,7 @@ class CLIPConcept(nn.Module):
         self.classifier.weight.data.copy_(positive_value * positive_loc + negative_value * negative_loc)
 
     def normalize_prototypes(self):
-        self.prototypes.data = F.normalize(self.prototype_vectors, p=2, dim=1).data
+        self.prototypes.data = F.normalize(self.prototypes, p=2, dim=1).data
 
 
 def cosine_conv2d(x: torch.Tensor, weight: torch.Tensor):
