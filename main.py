@@ -33,6 +33,9 @@ def train(model, train_loader, criterion, optimizer, device):
         optimizer.step()
         optimizer.zero_grad()
 
+        with torch.no_grad():
+            model.normalize_prototypes()
+
         for loss_name, loss_value in loss_dict.items():
             train_losses[loss_name] += loss_dict[loss_name].item()
 
@@ -139,6 +142,8 @@ def main():
     parser.add_argument('--lr', type=float, default=0.01, help='Learning rate')
     parser.add_argument('--data-dir', type=str, default='datasets')
     parser.add_argument('--dataset', type=str, default='CUB', choices=['CUB', 'SUN'])
+    parser.add_argument('--k', type=int, default=10, help='Number of prototypes per class')
+
 
     parser.add_argument('--clst-coef', type=float, default=0.8)
     parser.add_argument('--sep-dir', type=str, default=0.08)
@@ -151,7 +156,8 @@ def main():
     
     model = CLIPConcept(
         # query_features=torch.load('data/SUN/sun_attr_features_multi_prompt_mean.pt'),
-        num_classes=num_classes
+        num_classes=num_classes,
+        k=args.k
         # device=device
     )
     convert_models_to_fp32(model)

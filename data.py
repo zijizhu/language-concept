@@ -1,6 +1,6 @@
+import pickle as pkl
 import re
 from pathlib import Path
-import pickle as pkl
 from typing import Optional, Callable
 
 import torch
@@ -9,6 +9,7 @@ from scipy.io import loadmat
 from torch.utils.data import Dataset
 from torchvision.datasets import ImageFolder
 from torchvision.transforms import Compose, Resize, CenterCrop, ToTensor, Normalize, InterpolationMode
+from torchvision.transforms.v2.functional import pil_to_tensor, resize
 
 
 class SUNDataset(Dataset):
@@ -97,6 +98,6 @@ class CUBConceptDataset(ImageFolder):
         if self.return_attributes:
             return_data.append(attr)
         if self.return_raw_imgs:
-            return_data.append(im)
+            return_data.append(resize(pil_to_tensor(im), [224, 224]))
         return tuple(return_data)
 

@@ -68,7 +68,7 @@ class CLIPConcept(nn.Module):
             self.classifier = nn.Linear(num_classes * k, num_classes, bias=False)
             self._init_classifier()
 
-    def forward(self, images: torch.Tensor, return_attr_logits=False):
+    def forward(self, images: torch.Tensor):
         features = self.clip.encode_image(images, return_all=True, csa=True).to(dtype=torch.float32)
         # print("features have nan:", torch.isnan(features).any())
         features = features[:, 1:]  # shape: [batch_size, n_patches, dim]
@@ -100,6 +100,9 @@ class CLIPConcept(nn.Module):
         positive_value = 1
         negative_value = -0.5
         self.classifier.weight.data.copy_(positive_value * positive_loc + negative_value * negative_loc)
+
+    def normalize_prototypes(self):
+        self.prototypes.data = F.normalize(self.prototype_vectors, p=2, dim=1).data
 
 
 def cosine_conv2d(x: torch.Tensor, weight: torch.Tensor):
