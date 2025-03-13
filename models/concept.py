@@ -40,27 +40,15 @@ class CLIPConcept(nn.Module):
         features = self.backbone(images)  # shape: [batch_size, dim, w, h]
         features = self.adapter(features)
 
-        cosine_sims = cosine_conv2d(features, self.prototypes)
+        cosine_scores = cosine_conv2d(features, self.prototypes)
         activations = project2basis(features, self.prototypes)
 
-        max_cosine_sims = F.adaptive_max_pool2d(cosine_sims, (1, 1,)).squeeze()
-        concept_logits = F.adaptive_max_pool2d(activations, (1, 1,)).squeeze()
+        max_cosine_scores = F.adaptive_max_pool2d(cosine_scores, (1, 1,)).squeeze()  # shape: [batch_size, num_concept * k]
+        concept_logits = F.adaptive_max_pool2d(activations, (1, 1,)).squeeze()  # shape: [batch_size, num_concept * k]
+        
         logits = self.classifier(concept_logits)
 
-        return logits, max_cosine_sims, concept_logits, cosine_sims, activations
-
-    def _init_classifier(self):
-        self.prototype_class_identity = torch.zeros(self.num_classes * self.k, self.num_classes)
-
-        for j in range(self.num_classes * self.k):
-            self.prototype_class_identity[j, j // self.k] = 1
-
-        positive_loc = torch.t(self.prototype_class_identity)
-        negative_loc = 1 - positive_loc
-
-        positive_value = 1
-        negative_value = -0.5
-        self.classifier.weight.data.copy_(positive_value * positive_loc + negative_value * negative_loc)
+        return logits, max_cosine_scores, concept_logits, cosine_scores, activations
 
     def normalize_prototypes(self):
         self.prototypes.data = F.normalize(self.prototypes, p=2, dim=1).data
@@ -86,23 +74,28 @@ class Criterion(nn.Module):
         self.clst_coef = clst_coef
         self.sep_coef = sep_coef
 
-    def forward(self, logits: torch.Tensor, cosine_logits: torch.Tensor, targets: torch.Tensor, concept_targets: torch.Tensor):
+    def forward(self, logits: torch.Tensor, cosine_scores: torch.Tensor, targets: torch.Tensor, concept_targets: torch.Tensor):
         loss_dict = dict(
             xe=self.xe(logits, targets),
-            clst=self.clst_coef * self.clst_criterion(cosine_logits, concept_targets),
-            sep=self.sep_coef * self.sep_criterion(cosine_logits, concept_targets)
+            clst=self.clst_coef * self.clst_criterion(cosine_scores, concept_targets),
+            sep=self.sep_coef * self.sep_criterion(cosine_scores, concept_targets)
         )
         return sum(loss_dict.values()), loss_dict
 
-    def clst_criterion(self, cosine_logits: torch.Tensor, concept_targets: torch.Tensor):
-        batch_size = cosine_logits.size(0)
-        cosine_logits = cosine_logits.reshape(batch_size, self.num_concepts, -1)  # shape: [batch_size, num_classes, k]
-        positive_indices = concept_targets.float().nonzero(as_tuple=True)
-        return cosine_logits[positive_indices].min(dim=-1).values.mean()
-
-    def sep_criterion(self, cosine_logits: torch.Tensor, concept_targets: torch.Tensor):
-        batch_size = cosine_logits.size(0)
-        cosine_logits = cosine_logits.reshape(batch_size, self.num_concepts, -1)  # shape: [batch_size, num_classes, k]
+    def clst_criterion(self, cosine_scores: torch.Tensor, concept_targets: torch.Tensor):
+        cosine_scores = cosine_scores.reshape(cosine_scores.size(0), self.num_concepts, -1).max(dim=-1).values
+        max_dist = 64
         positives = concept_targets.float()
-        negative_indices = (1 - positives).nonzero(as_tuple=True)
-        return cosine_logits[negative_indices].reshape(batch_size, -1).min(dim=-1).values.mean()
+        inverted_cosine_scores = (max_dist - cosine_scores) * positives
+        min_cosine_scores = max_dist - inverted_cosine_scores.max(dim=-1).values
+        return min_cosine_scores.mean()
+
+    def sep_criterion(self, cosine_scores: torch.Tensor, concept_targets: torch.Tensor):
+        cosine_scores = cosine_scores.reshape(cosine_scores.size(0), self.num_concepts, -1).max(dim=-1).values
+
+        max_dist = 64
+        negatives = 1 - concept_targets.float()
+        inverted_cosine_scores = (max_dist - cosine_scores) * negatives
+        min_cosine_scores = max_dist - inverted_cosine_scores.max(dim=-1).values
+        return min_cosine_scores.mean()
+
