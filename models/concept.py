@@ -1,5 +1,4 @@
 import torch
-import clip
 from torch import nn
 import torch.nn.functional as F
 from torchvision.models import densenet161, DenseNet161_Weights

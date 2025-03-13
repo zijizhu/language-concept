@@ -130,6 +130,9 @@ def get_full_optimizer(model: nn.Module):
     for params in model.parameters():
         params.requires_grad = True
 
+    n_parameters = sum(p.numel() for p in model.parameters() if p.requires_grad)
+    print('number of params: {}'.format(n_parameters))
+
     return optimizer
 
 
