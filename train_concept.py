@@ -17,6 +17,7 @@ def train(model, train_loader, criterion, optimizer, device):
     model.train()
     train_losses = dict(
         xe=0.0,
+        bce=0.0,
         clst=0.0,
         sep=0.0
     )
@@ -50,6 +51,7 @@ def validate(model, test_loader, criterion, device):
     model.eval()
     val_losses = dict(
         xe=0.0,
+        bce=0.0,
         clst=0.0,
         sep=0.0
     )
