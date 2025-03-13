@@ -2,7 +2,7 @@ import torch
 import clip
 from torch import nn
 import torch.nn.functional as F
-from torchvision.models import densenet121, DenseNet121_Weights
+from torchvision.models import densenet161, DenseNet161_Weights
 
 
 class CLIPConcept(nn.Module):
@@ -19,7 +19,7 @@ class CLIPConcept(nn.Module):
             score_aggregation: bool = True
     ):
         super().__init__()
-        backbone = densenet121(weights=DenseNet121_Weights.DEFAULT)
+        backbone = densenet161(weights=DenseNet161_Weights.DEFAULT)
         self.backbone = nn.Sequential(*list(backbone.children())[:-1])
         self.k = k
         self.num_classes = num_classes
