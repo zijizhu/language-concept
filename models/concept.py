@@ -40,15 +40,16 @@ class CLIPConcept(nn.Module):
         features = self.backbone(images)  # shape: [batch_size, dim, w, h]
         features = self.adapter(features)
 
-        cosine_scores = cosine_conv2d(features, self.prototypes)
+        cosine_activations = cosine_conv2d(features, self.prototypes)
         activations = project2basis(features, self.prototypes)
 
-        max_cosine_scores = F.adaptive_max_pool2d(cosine_scores, (1, 1,)).squeeze()  # shape: [batch_size, num_concept * k]
-        concept_logits = F.adaptive_max_pool2d(activations, (1, 1,)).squeeze()  # shape: [batch_size, num_concept * k]
-        
-        logits = self.classifier(concept_logits)
+        cosine_scores = F.adaptive_max_pool2d(cosine_activations, (1, 1,)).squeeze()  # shape: [batch_size, num_concept * k]
+        prototype_logits = F.adaptive_max_pool2d(activations, (1, 1,)).squeeze()  # shape: [batch_size, num_concept * k]
 
-        return logits, max_cosine_scores, concept_logits, cosine_scores, activations
+        concept_logits = prototype_logits.reshape(-1, self.num_concepts, self.k).max(dim=-1).values
+        logits = self.classifier(prototype_logits)
+
+        return logits, cosine_scores, concept_logits, cosine_activations, activations
 
     def normalize_prototypes(self):
         self.prototypes.data = F.normalize(self.prototypes, p=2, dim=1).data
@@ -66,17 +67,20 @@ def project2basis(x: torch.Tensor, weight: torch.Tensor):
 
 
 class Criterion(nn.Module):
-    def __init__(self, clst_coef: float, sep_coef: float, num_concepts: int = 112):
+    def __init__(self, bce_coef: float, clst_coef: float, sep_coef: float, num_concepts: int = 112):
         super().__init__()
         self.num_concepts = num_concepts
         self.xe = nn.CrossEntropyLoss()
+        self.bce = nn.BCEWithLogitsLoss()
 
+        self.bce_coef = bce_coef
         self.clst_coef = clst_coef
         self.sep_coef = sep_coef
 
-    def forward(self, logits: torch.Tensor, cosine_scores: torch.Tensor, targets: torch.Tensor, concept_targets: torch.Tensor):
+    def forward(self, logits: torch.Tensor, cosine_scores: torch.Tensor, concept_logits: torch.Tensor, targets: torch.Tensor, concept_targets: torch.Tensor):
         loss_dict = dict(
             xe=self.xe(logits, targets),
+            bce=self.bce_coef * self.bce(concept_logits, concept_targets),
             clst=self.clst_coef * self.clst_criterion(cosine_scores, concept_targets),
             sep=self.sep_coef * self.sep_criterion(cosine_scores, concept_targets)
         )

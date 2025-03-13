@@ -27,9 +27,8 @@ def train(model, train_loader, criterion, optimizer, device):
         images, labels, attributes = batch
         images, labels = images.to(device), labels.to(device)
 
-
-        logits, max_cosine_sims, concept_logits, cosine_sims, activations = model(images)
-        loss, loss_dict = criterion(logits, max_cosine_sims, labels, attributes)
+        logits, cosine_scores, concept_logits, cosine_activations, activations = model(images)
+        loss, loss_dict = criterion(logits, cosine_scores, concept_logits, labels, attributes.float())
 
         loss.backward()
         optimizer.step()
@@ -62,8 +61,8 @@ def validate(model, test_loader, criterion, device):
             images, labels, attributes = batch
             images, labels = images.to(device), labels.to(device)
 
-            logits, max_cosine_sims, concept_logits, cosine_sims, activations = model(images)
-            loss, loss_dict = criterion(logits, max_cosine_sims, labels, attributes)
+            logits, cosine_scores, concept_logits, cosine_activations, activations = model(images)
+            loss, loss_dict = criterion(logits, cosine_scores, concept_logits, labels, attributes.float())
 
             for loss_name, loss_value in loss_dict.items():
                 val_losses[loss_name] += loss_dict[loss_name].item()
@@ -162,7 +161,7 @@ def main():
     )
     convert_models_to_fp32(model)
 
-    criterion = Criterion(clst_coef=-0.8, sep_coef=0.08, num_concepts=num_concepts)
+    criterion = Criterion(bce_coef=0.01, clst_coef=-0.8, sep_coef=0.08, num_concepts=num_concepts)
 
     optimizer = get_warmup_optimizer(model)
 
