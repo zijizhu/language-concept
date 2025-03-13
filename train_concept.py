@@ -25,7 +25,7 @@ def train(model, train_loader, criterion, optimizer, device):
 
     for batch in tqdm(train_loader):
         images, labels, attributes = batch
-        images, labels = images.to(device), labels.to(device)
+        images, labels, attributes = images.to(device), labels.to(device), attributes.to(device)
 
         logits, cosine_scores, concept_logits, cosine_activations, activations = model(images)
         loss, loss_dict = criterion(logits, cosine_scores, concept_logits, labels, attributes.float())
@@ -59,7 +59,7 @@ def validate(model, test_loader, criterion, device):
     with torch.no_grad():
         for batch in tqdm(test_loader):
             images, labels, attributes = batch
-            images, labels = images.to(device), labels.to(device)
+            images, labels, attributes = images.to(device), labels.to(device), attributes.to(device)
 
             logits, cosine_scores, concept_logits, cosine_activations, activations = model(images)
             loss, loss_dict = criterion(logits, cosine_scores, concept_logits, labels, attributes.float())
