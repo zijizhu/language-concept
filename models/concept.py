@@ -80,8 +80,8 @@ class Criterion(nn.Module):
         loss_dict = dict(
             xe=self.xe(logits, targets),
             bce=self.bce_coef * self.bce(concept_logits, concept_targets),
-            clst=self.clst_coef * self.clst_criterion(cosine_scores, concept_targets),
-            sep=self.sep_coef * self.sep_criterion(cosine_scores, concept_targets)
+            # clst=self.clst_coef * self.clst_criterion(cosine_scores, concept_targets),
+            # sep=self.sep_coef * self.sep_criterion(cosine_scores, concept_targets)
         )
         return sum(loss_dict.values()), loss_dict
 

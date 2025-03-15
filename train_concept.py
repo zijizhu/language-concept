@@ -18,8 +18,8 @@ def train(model, train_loader, criterion, optimizer, device):
     train_losses = dict(
         xe=0.0,
         bce=0.0,
-        clst=0.0,
-        sep=0.0
+        # clst=0.0,
+        # sep=0.0
     )
     correct = 0
     total = 0
@@ -52,8 +52,8 @@ def validate(model, test_loader, criterion, device):
     val_losses = dict(
         xe=0.0,
         bce=0.0,
-        clst=0.0,
-        sep=0.0
+        # clst=0.0,
+        # sep=0.0
     )
     correct = 0
     total = 0
