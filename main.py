@@ -182,7 +182,7 @@ def main():
         print(f"Val Acc: {val_acc:.4f}")
 
     torch.save({k: v.detach().cpu() for k, v in model.state_dict().items()}, "model.pth")
-    print("Model saved as model.pth")
+    print("Model saved as clip_model.pth")
 
 
 if __name__ == "__main__":

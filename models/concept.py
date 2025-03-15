@@ -4,7 +4,7 @@ import torch.nn.functional as F
 from torchvision.models import densenet161, DenseNet161_Weights
 
 
-class CLIPConcept(nn.Module):
+class ProtoConcept(nn.Module):
     def __init__(
             self,
             # query_features: torch.Tensor | None = None,

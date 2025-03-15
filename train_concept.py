@@ -10,7 +10,7 @@ from torchvision.transforms import Compose, Resize, CenterCrop, ToTensor, Normal
 from tqdm import tqdm
 
 from data import SUNDataset, CUBConceptDataset
-from models.concept import CLIPConcept, Criterion
+from models.concept import ProtoConcept, Criterion
 
 
 def train(model, train_loader, criterion, optimizer, device):
@@ -89,7 +89,7 @@ def load_data(dataset_name: str, data_dir: str, batch_size: int):
             Resize(224, interpolation=InterpolationMode.BICUBIC),
             CenterCrop(224),
             ToTensor(),
-            Normalize((0.48145466, 0.4578275, 0.40821073), (0.26862954, 0.26130258, 0.27577711)),
+            Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225)),
         ])
         train_dataset = CUBConceptDataset(
             Path(data_dir) / 'cub200_cropped' / 'train_cropped_augmented',
@@ -158,7 +158,7 @@ def main():
 
     train_loader, test_loader, num_classes, num_concepts = load_data(args.dataset, args.data_dir, args.batch_size)
 
-    model = CLIPConcept(
+    model = ProtoConcept(
         # query_features=torch.load('data/SUN/sun_attr_features_multi_prompt_mean.pt'),
         num_classes=num_classes,
         num_concepts=num_concepts
@@ -189,7 +189,7 @@ def main():
         print(f"Val Acc: {val_acc:.4f}")
 
     torch.save({k: v.detach().cpu() for k, v in model.state_dict().items()}, "model.pth")
-    print("Model saved as model.pth")
+    print("Model saved as clip_model.pth")
 
 
 if __name__ == "__main__":
