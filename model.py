@@ -58,7 +58,7 @@ class CLIPConcept(nn.Module):
             nn.Conv2d(in_channels=self.clip.visual.output_dim, out_channels=dim, kernel_size=1),
             nn.Sigmoid()
         )
-        self.prototypes = nn.Parameter(torch.randn(num_classes * k, dim, 1, 1))
+        self.prototypes = nn.Parameter(torch.randn(num_classes * k, dim, 2, 2))
 
         nn.init.trunc_normal_(self.prototypes, std=0.02)
 
@@ -125,8 +125,8 @@ class Criterion(nn.Module):
     def forward(self, logits: torch.Tensor, cosine_logits: torch.Tensor, targets: torch.Tensor):
         loss_dict = dict(
             xe=self.xe(logits, targets),
-            clst=self.clst_coef * self.clst_criterion(cosine_logits, targets),
-            sep=self.sep_coef * self.sep_criterion(cosine_logits, targets)
+            # clst=self.clst_coef * self.clst_criterion(cosine_logits, targets),
+            # sep=self.sep_coef * self.sep_criterion(cosine_logits, targets)
         )
         return sum(loss_dict.values()), loss_dict
 
