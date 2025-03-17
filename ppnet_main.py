@@ -1,11 +1,12 @@
 import argparse
+import sys
 from pathlib import Path
-from itertools import chain
+from collections import defaultdict
+import logging
 
 import torch
 from torch import nn
 import torch.optim as optim
-from torch.optim import lr_scheduler
 from torch.utils.data import DataLoader
 from torchvision.transforms import Compose, Resize, CenterCrop, ToTensor, Normalize, InterpolationMode
 from tqdm import tqdm
@@ -16,11 +17,7 @@ from models.ppnet import PPNet, Criterion
 
 def train(model, train_loader, criterion, optimizer, device):
     model.train()
-    train_losses = dict(
-        xe=0.0,
-        clst=0.0,
-        # sep=0.0
-    )
+    train_losses = defaultdict(float)
     correct = 0
     total = 0
 
@@ -28,7 +25,7 @@ def train(model, train_loader, criterion, optimizer, device):
         images, labels = images.to(device), labels.to(device)
 
         logits, cosine_scores, cosine_activations, activations = model(images)
-        loss, loss_dict = criterion(logits, cosine_scores, labels)
+        loss, loss_dict = criterion(logits, cosine_scores, labels, model.prototypes)
         loss.backward()
 
         optimizer.step()
@@ -50,11 +47,7 @@ def train(model, train_loader, criterion, optimizer, device):
 
 def validate(model, test_loader, criterion, device):
     model.eval()
-    val_losses = dict(
-        xe=0.0,
-        clst=0.0,
-        # sep=0.0
-    )
+    val_losses = defaultdict(float)
     correct = 0
     total = 0
 
@@ -128,11 +121,6 @@ def get_full_optimizer(model: nn.Module):
     return optimizer
 
 
-def convert_models_to_fp32(model: nn.Module):
-    for p in model.parameters():
-        p.data = p.data.float()
-
-
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--epochs', type=int, default=8, help='Number of training epochs')
@@ -141,22 +129,42 @@ def main():
     parser.add_argument('--data-dir', type=str, default='datasets')
     parser.add_argument('--dataset', type=str, default='CUB', choices=['CUB', 'SUN'])
 
-    parser.add_argument('--clst-coef', type=float, default=0.8)
-    parser.add_argument('--sep-dir', type=str, default=0.08)
+    parser.add_argument('--clst-coef', type=float, default=-0.8)
+    parser.add_argument('--sep-coef', type=float, default=0.08)
+    parser.add_argument('--orth-coef', type=float, default=1e-4)
+
+    parser.add_argument('--name', type=str, required=True)
 
     args = parser.parse_args()
+
+    log_dir = Path('logs') / args.name
+    log_dir.mkdir(parents=True, exist_ok=True)
+
+    logging.basicConfig(
+        level=logging.INFO,
+        format="[%(asctime)s][%(name)s][%(levelname)s] - %(message)s",
+        datefmt="%Y-%m-%d %H:%M:%S",
+        handlers=[
+            logging.FileHandler((log_dir / "train.log").as_posix()),
+            logging.StreamHandler(sys.stdout),
+        ],
+        force=True,
+    )
+    
+    logger = logging.getLogger()
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     train_loader, test_loader, num_classes = load_data(args.dataset, args.data_dir, args.batch_size)
 
-    model = PPNet(
-        num_classes=num_classes
-        # device=device
-    )
-    convert_models_to_fp32(model)
+    model = PPNet(num_classes=num_classes)
 
-    criterion = Criterion(clst_coef=-0.8, sep_coef=-0.08, num_classes=num_classes)
+    criterion = Criterion(
+        clst_coef=args.clst_coef,
+        sep_coef=args.sep_coef,
+        orth_coef=args.orth_coef,
+        num_classes=num_classes
+    )
 
     optimizer = get_warmup_optimizer(model)
     lr_scheduler = None
@@ -173,15 +181,15 @@ def main():
         val_losses, val_acc = validate(model, test_loader, criterion, device)
 
         for loss_name, loss_value in train_losses.items():
-            print(f"Train {loss_name}: {loss_value:.4f}")
-        print(f"Train Acc: {train_acc:.4f}")
+            logger.info(f"Train {loss_name}: {loss_value:.4f}")
+        logger.info(f"Train Acc: {train_acc:.4f}")
 
         for loss_name, loss_value in val_losses.items():
-            print(f"Val {loss_name}: {loss_value:.4f}")
-        print(f"Val Acc: {val_acc:.4f}")
+            logger.info(f"Val {loss_name}: {loss_value:.4f}")
+        logger.info(f"Val Acc: {val_acc:.4f}")
 
-        torch.save({k: v.detach().cpu() for k, v in model.state_dict().items()}, "clip_model.pth")
-        print("Model saved as clip_model.pth")
+        torch.save({k: v.detach().cpu() for k, v in model.state_dict().items()}, f"logs/{args.name}/model.pth")
+        logger.info("Model saved as model.pth")
 
         if lr_scheduler is not None:
             lr_scheduler.step()
