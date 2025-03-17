@@ -134,7 +134,7 @@ def convert_models_to_fp32(model: nn.Module):
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--epochs', type=int, default=8, help='Number of training epochs')
-    parser.add_argument('--batch-size', type=int, default=128, help='Batch size for training')
+    parser.add_argument('--batch-size', type=int, default=80, help='Batch size for training')
     parser.add_argument('--lr', type=float, default=0.01, help='Learning rate')
     parser.add_argument('--data-dir', type=str, default='datasets')
     parser.add_argument('--dataset', type=str, default='CUB', choices=['CUB', 'SUN'])
