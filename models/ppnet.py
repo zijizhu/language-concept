@@ -98,7 +98,7 @@ class Criterion(nn.Module):
     def clst_criterion(self, cosine_scores: torch.Tensor, targets: torch.Tensor):
         cosine_scores = cosine_scores.reshape(cosine_scores.size(0), self.num_classes, -1).max(dim=-1).values
         max_dist = 64
-        positives = targets.float()
+        positives = F.one_hot(targets, num_classes=self.num_classes).float()
         inverted_cosine_scores = (max_dist - cosine_scores) * positives
         min_cosine_scores = max_dist - inverted_cosine_scores.max(dim=-1).values
         return min_cosine_scores.mean()
@@ -107,7 +107,7 @@ class Criterion(nn.Module):
         cosine_scores = cosine_scores.reshape(cosine_scores.size(0), self.num_classes, -1).max(dim=-1).values
 
         max_dist = 64
-        negatives = 1 - targets.float()
+        negatives = 1 - F.one_hot(targets, num_classes=self.num_classes).float()
         inverted_cosine_scores = (max_dist - cosine_scores) * negatives
         min_cosine_scores = max_dist - inverted_cosine_scores.max(dim=-1).values
         return min_cosine_scores.mean()
