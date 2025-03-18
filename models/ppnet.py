@@ -40,9 +40,7 @@ class PPNet(nn.Module):
             nn.Conv2d(in_channels=backbone.classifier.in_features, out_channels=dim, kernel_size=1),
             nn.Sigmoid()
         )
-        self.prototypes = nn.Parameter(torch.randn(num_classes * k, dim, 1, 1))
-
-        nn.init.trunc_normal_(self.prototypes, std=0.02)
+        self.prototypes = nn.Parameter(torch.rand(num_classes * k, dim, 1, 1))
 
         if score_aggregation:
             self.classifier = ScoreAggregation(num_classes=num_classes, k=k)
