@@ -66,12 +66,25 @@ class PPNet(nn.Module):
         cosine_scores = F.adaptive_max_pool2d(cosine_activations, (1, 1,)).squeeze()  # shape: [batch_size, num_concept * k]
         prototype_logits = F.adaptive_max_pool2d(activations, (1, 1,)).squeeze()  # shape: [batch_size, num_concept * k]
 
+        cosine_min_distances = self.global_min_pooling(-cosine_activations)
+
         logits = self.classifier(prototype_logits)
 
-        return logits, cosine_scores, cosine_activations, activations
+        # return logits, cosine_scores, cosine_activations, activations
+        return logits, cosine_min_distances, cosine_activations, activations
+
 
     def normalize_prototypes(self):
         self.prototypes.data = F.normalize(self.prototypes, p=2, dim=1).data
+
+    def global_min_pooling(self, distances):
+        min_distances = -F.max_pool2d(-distances,
+                                      kernel_size=(distances.size()[2],
+                                                   distances.size()[3]))
+        min_distances = min_distances.view(-1, self.num_prototypes)
+
+        return min_distances
+
 
 
 def cosine_conv2d(x: torch.Tensor, weight: torch.Tensor):
@@ -96,14 +109,23 @@ class Criterion(nn.Module):
         self.sep_coef = sep_coef
         self.ortho_coef = ortho_coef
 
+        self.prototype_class_identity = torch.zeros(2000, self.num_classes)
+        self.num_prototypes_per_class = self.num_prototypes // self.num_classes
+        for j in range(self.num_prototypes):
+            self.prototype_class_identity[j, j // self.num_prototypes_per_class] = 1
+
+
     def forward(self, logits: torch.Tensor, cosine_scores: torch.Tensor, targets: torch.Tensor, prototypes: torch.Tensor):
         loss_dict = dict(
             xe=self.xe(logits, targets),
-            clst=self.clst_coef * self.clst_criterion(cosine_scores, targets)
+            # clst=self.clst_coef * self.clst_criterion(cosine_scores, targets)
+            clst=self.clst_coef * self.get_clst_loss(cosine_scores, targets)
         )
-        if self.sep_coef > 0:
-            loss_dict['sep'] = self.sep_coef * self.sep_criterion(cosine_scores, targets)
-        if self.ortho_coef > 0:
+        # if self.sep_coef > 0:
+        #     loss_dict['sep'] = self.sep_coef * self.sep_criterion(cosine_scores, targets)
+        if self.sep_coef != 0:
+            loss_dict['sep'] = self.sep_coef * self.get_sep_loss(cosine_scores, targets)
+        if self.ortho_coef != 0:
             loss_dict['ortho'] = self.ortho_coef * self.ortho_criterion(prototypes)
 
         return sum(loss_dict.values()), loss_dict
@@ -135,3 +157,22 @@ class Criterion(nn.Module):
         ortho_cost = torch.sum(torch.relu(torch.norm(difference_value, p=1, dim=[1, 2]) - 0))
 
         return ortho_cost
+
+    def get_clst_loss(self, min_distances, label):
+        max_dist = 64
+        prototypes_of_correct_class = torch.t(self.prototype_class_identity[:, label]).to(device=min_distances.device)
+        inverted_distances, _ = torch.max((max_dist - min_distances) * prototypes_of_correct_class, dim=1)
+        cluster_cost = torch.mean(max_dist - inverted_distances)
+
+        return cluster_cost
+
+    def get_sep_loss(self, min_distances, label):
+        max_dist = 64
+        prototypes_of_correct_class = torch.t(self.prototype_class_identity[:, label]).to(device=min_distances.device)
+        prototypes_of_wrong_class = 1 - prototypes_of_correct_class
+        inverted_distances_to_nontarget_prototypes, _ = \
+            torch.max((max_dist - min_distances) * prototypes_of_wrong_class, dim=1)
+        separation_cost = torch.mean(max_dist - inverted_distances_to_nontarget_prototypes)
+
+        return separation_cost
+
