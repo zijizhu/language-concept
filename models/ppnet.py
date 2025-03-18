@@ -7,7 +7,7 @@ from torchvision.models import densenet161, DenseNet161_Weights
 class ScoreAggregation(nn.Module):
     def __init__(self, init_val: float = 0.2, num_classes: int = 200, k: int = 10) -> None:
         super().__init__()
-        self.weights = nn.Parameter(torch.full((num_classes, k,), init_val))
+        self.weights = nn.Parameter(torch.ones(num_classes, k).float())
         self.num_classes = num_classes
 
     def forward(self, x: torch.Tensor):
