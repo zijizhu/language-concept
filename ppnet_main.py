@@ -131,8 +131,9 @@ def main():
 
     parser.add_argument('--clst-coef', type=float, default=-0.8)
     parser.add_argument('--sep-coef', type=float, default=0.08)
-    parser.add_argument('--orth-coef', type=float, default=1e-4)
+    parser.add_argument('--ortho-coef', type=float, default=1e-4)
 
+    parser.add_argument('--joint-start-epoch', type=int, default=3)
     parser.add_argument('--name', type=str, required=True)
 
     args = parser.parse_args()
@@ -162,7 +163,7 @@ def main():
     criterion = Criterion(
         clst_coef=args.clst_coef,
         sep_coef=args.sep_coef,
-        orth_coef=args.orth_coef,
+        ortho_coef=args.ortho_coef,
         k=10,
         num_classes=num_classes
     )
@@ -173,12 +174,14 @@ def main():
     model.to(device=device)
     criterion.to(device=device)
 
+    logger.info("Start warmup...")
     for epoch in range(args.epochs):
-        if epoch == 3:
+        if epoch == args.joint_start_epoch:
+            logger.info("Start fine-tuning...")
             optimizer = get_full_optimizer(model)
             lr_scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=5, gamma=0.1)
-        train_losses, train_acc = train(model, train_loader, criterion, optimizer, device)
 
+        train_losses, train_acc = train(model, train_loader, criterion, optimizer, device)
         val_losses, val_acc = validate(model, test_loader, criterion, device)
 
         for loss_name, loss_value in train_losses.items():
@@ -189,7 +192,13 @@ def main():
             logger.info(f"Val {loss_name}: {loss_value:.4f}")
         logger.info(f"Val Acc: {val_acc:.4f}")
 
-        torch.save({k: v.detach().cpu() for k, v in model.state_dict().items()}, f"logs/{args.name}/model.pth")
+        torch.save(
+            dict(
+                state_dict={k: v.detach().cpu() for k, v in model.state_dict().items()},
+                hparams=vars(args),
+            ),
+            f"logs/{args.name}/model.pth"
+        )
         logger.info("Model saved as model.pth")
 
         if lr_scheduler is not None:

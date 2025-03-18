@@ -86,7 +86,7 @@ def project2basis(x: torch.Tensor, weight: torch.Tensor):
 
 
 class Criterion(nn.Module):
-    def __init__(self, clst_coef: float, sep_coef: float, orth_coef: float, k: int = 10, num_classes: int = 200):
+    def __init__(self, clst_coef: float, sep_coef: float, ortho_coef: float, k: int = 10, num_classes: int = 200):
         super().__init__()
         self.num_classes = num_classes
         self.k = k
@@ -94,7 +94,7 @@ class Criterion(nn.Module):
 
         self.clst_coef = clst_coef
         self.sep_coef = sep_coef
-        self.orth_coef = orth_coef
+        self.ortho_coef = ortho_coef
 
     def forward(self, logits: torch.Tensor, cosine_scores: torch.Tensor, targets: torch.Tensor, prototypes: torch.Tensor):
         loss_dict = dict(
@@ -103,8 +103,8 @@ class Criterion(nn.Module):
         )
         if self.sep_coef > 0:
             loss_dict['sep'] = self.sep_coef * self.sep_criterion(cosine_scores, targets)
-        if self.orth_coef > 0:
-            loss_dict['orth'] = self.orth_coef * self.ortho_criterion(prototypes)
+        if self.ortho_coef > 0:
+            loss_dict['ortho'] = self.ortho_coef * self.ortho_criterion(prototypes)
 
         return sum(loss_dict.values()), loss_dict
 
@@ -129,9 +129,9 @@ class Criterion(nn.Module):
         cur_basis_matrix = torch.squeeze(prototypes)
         subspace_basis_matrix = cur_basis_matrix.reshape(self.num_classes, 10, -1)
         subspace_basis_matrix_T = torch.transpose(subspace_basis_matrix, 1, 2)
-        orth_operator = torch.matmul(subspace_basis_matrix, subspace_basis_matrix_T)
+        ortho_operator = torch.matmul(subspace_basis_matrix, subspace_basis_matrix_T)
         I_operator = torch.eye(subspace_basis_matrix.size(1), subspace_basis_matrix.size(1)).to(device=prototypes.device)
-        difference_value = orth_operator - I_operator
+        difference_value = ortho_operator - I_operator
         ortho_cost = torch.sum(torch.relu(torch.norm(difference_value, p=1, dim=[1, 2]) - 0))
 
         return ortho_cost
