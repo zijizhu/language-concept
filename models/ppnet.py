@@ -86,7 +86,6 @@ class PPNet(nn.Module):
         return min_distances
 
 
-
 def cosine_conv2d(x: torch.Tensor, weight: torch.Tensor):
     x = F.normalize(x, p=2, dim=1)
     weight = F.normalize(weight, p=2, dim=1)

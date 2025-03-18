@@ -98,7 +98,8 @@ def load_data(dataset_name: str, data_dir: str, batch_size: int):
 
 def get_warmup_optimizer(model: nn.Module):
     optimizer = optim.Adam([
-        {'params': list(model.adapter.parameters()) + [model.prototypes], 'lr': 3e-3},
+        {'params': model.adapter.parameters(), 'lr': 3e-3, 'weight_decay': 1e-3},
+        {'params': [model.prototypes], 'lr': 3e-3},
         {'params': model.classifier.parameters(), 'lr': 1e-06}
     ])
 
@@ -110,8 +111,9 @@ def get_warmup_optimizer(model: nn.Module):
 
 def get_full_optimizer(model: nn.Module):
     optimizer = optim.Adam([
-        {'params': model.backbone.parameters(), 'lr': 1e-4},
-        {'params': list(model.adapter.parameters()) + [model.prototypes], 'lr': 3e-3},
+        {'params': model.backbone.parameters(), 'lr': 1e-4, 'weight_decay': 1e-3},
+        {'params': model.adapter.parameters(), 'lr': 3e-3, 'weight_decay': 1e-3},
+        {'params': [model.prototypes], 'lr': 3e-3},
         {'params': model.classifier.parameters(), 'lr': 1e-06}
     ])
 
