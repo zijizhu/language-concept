@@ -163,6 +163,7 @@ def main():
         clst_coef=args.clst_coef,
         sep_coef=args.sep_coef,
         orth_coef=args.orth_coef,
+        k=10,
         num_classes=num_classes
     )
 

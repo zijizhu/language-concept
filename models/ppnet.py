@@ -86,9 +86,10 @@ def project2basis(x: torch.Tensor, weight: torch.Tensor):
 
 
 class Criterion(nn.Module):
-    def __init__(self, clst_coef: float, sep_coef: float, orth_coef: float, num_classes: int = 200):
+    def __init__(self, clst_coef: float, sep_coef: float, orth_coef: float, k: int = 10, num_classes: int = 200):
         super().__init__()
         self.num_classes = num_classes
+        self.k = k
         self.xe = nn.CrossEntropyLoss()
 
         self.clst_coef = clst_coef
@@ -126,7 +127,7 @@ class Criterion(nn.Module):
 
     def ortho_criterion(self, prototypes: torch.Tensor):
         cur_basis_matrix = torch.squeeze(prototypes)
-        subspace_basis_matrix = cur_basis_matrix.reshape(self.num_classes, self.num_prototypes_per_class,
+        subspace_basis_matrix = cur_basis_matrix.reshape(self.num_classes, 10,
                                                          self.prototype_shape[1])
         subspace_basis_matrix_T = torch.transpose(subspace_basis_matrix, 1, 2)
         orth_operator = torch.matmul(subspace_basis_matrix, subspace_basis_matrix_T)
