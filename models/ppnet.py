@@ -81,7 +81,7 @@ class PPNet(nn.Module):
         min_distances = -F.max_pool2d(-distances,
                                       kernel_size=(distances.size()[2],
                                                    distances.size()[3]))
-        min_distances = min_distances.view(-1, self.num_prototypes)
+        min_distances = min_distances.view(-1, 2000)
 
         return min_distances
 
