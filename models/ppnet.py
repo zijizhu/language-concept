@@ -109,6 +109,7 @@ class Criterion(nn.Module):
         self.sep_coef = sep_coef
         self.ortho_coef = ortho_coef
 
+        self.num_prototypes = 2000
         self.prototype_class_identity = torch.zeros(2000, self.num_classes)
         self.num_prototypes_per_class = self.num_prototypes // self.num_classes
         for j in range(self.num_prototypes):
