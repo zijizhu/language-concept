@@ -55,7 +55,7 @@ def validate(model, test_loader, criterion, device):
         for images, labels in tqdm(test_loader):
             images, labels = images.to(device), labels.to(device)
             logits, cosine_scores, cosine_activations, activations = model(images)
-            loss, loss_dict = criterion(logits, cosine_scores, labels)
+            loss, loss_dict = criterion(logits, cosine_scores, labels, model.prototypes)
 
             for loss_name, loss_value in loss_dict.items():
                 val_losses[loss_name] += loss_dict[loss_name].item()

@@ -103,7 +103,7 @@ class Criterion(nn.Module):
         if self.sep_coef > 0:
             loss_dict['sep'] = self.sep_coef * self.sep_criterion(cosine_scores, targets)
         if self.orth_coef > 0:
-            loss_dict['orth'] = self.orth_coef * self.orth_criterion(prototypes)
+            loss_dict['orth'] = self.orth_coef * self.ortho_criterion(prototypes)
 
         return sum(loss_dict.values()), loss_dict
 
