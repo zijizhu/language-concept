@@ -119,10 +119,10 @@ class Criterion(nn.Module):
             clst=self.clst_coef * self.clst_criterion(cosine_scores, targets)
             # clst=self.clst_coef * self.get_clst_loss(cosine_scores, targets)
         )
-        if self.sep_coef != 0:
-            loss_dict['sep'] = self.sep_coef * self.sep_criterion(cosine_scores, targets)
         # if self.sep_coef != 0:
-        #     loss_dict['sep'] = self.sep_coef * self.get_sep_loss(cosine_scores, targets)
+        #     loss_dict['sep'] = self.sep_coef * self.sep_criterion(cosine_scores, targets)
+        if self.sep_coef != 0:
+            loss_dict['sep'] = self.sep_coef * self.get_sep_loss(cosine_scores, targets)
         if self.ortho_coef != 0:
             loss_dict['ortho'] = self.ortho_coef * self.ortho_criterion(prototypes)
 
