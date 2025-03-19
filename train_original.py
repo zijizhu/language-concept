@@ -212,12 +212,12 @@ def main():
             optimizer = get_full_optimizer(model)
             lr_scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=5, gamma=0.1)
 
-        _, train_losses = train(model, epoch, train_loader, optimizer, None, None, None)
+        _, train_losses = train(model, epoch, train_loader, optimizer, None, None)
 
         for loss_name, loss_value in train_losses.items():
             logger.info(f"Train {loss_name}: {loss_value:.4f}")
 
-        _, val_losses = test(model, epoch, train_loader, optimizer, None, None, None)
+        _, val_losses = test(model, epoch, train_loader, None, None)
 
         for loss_name, loss_value in val_losses.items():
             logger.info(f"Val {loss_name}: {loss_value:.4f}")
