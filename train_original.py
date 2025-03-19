@@ -24,88 +24,6 @@ coefs = {
 }
 
 
-def train(model, train_loader, optimizer, device):
-    model.train()
-    correct = 0
-    total = 0
-
-    train_losses = defaultdict(float)
-
-    for images, label in tqdm(train_loader):
-        images, label = images.to(device), label.to(device)
-
-        output, (min_distances, proto_acts, shallow_feas, deep_feas) = model(images)
-
-        # Compute losses
-        cross_entropy = torch.nn.functional.cross_entropy(output, label)
-
-        # Clst loss
-        cluster_cost = model.get_clst_loss(min_distances, label)
-        # Seq loss
-        separation_cost = model.get_sep_loss(min_distances, label)
-        # Ortho loss
-        ortho_cost = model.get_ortho_loss()
-        loss = (coefs['crs_ent'] * cross_entropy
-                + coefs['clst'] * cluster_cost
-                + coefs['sep'] * separation_cost
-                + coefs['orth'] * ortho_cost)
-
-        optimizer.zero_grad()
-        loss.backward()
-        optimizer.step()
-
-        model.prototype_vectors.data = F.normalize(model.prototype_vectors, p=2, dim=1).data
-
-        train_losses['crs_ent'] += coefs['crs_ent'] * cross_entropy.item()
-        train_losses['clst'] += coefs['clst'] * cluster_cost.item()
-        train_losses['sep'] += coefs['sep'] * separation_cost.item()
-        train_losses['orth'] += coefs['orth'] * ortho_cost.item()
-
-        predicted = torch.argmax(output, dim=-1)
-        correct += (predicted == label).sum().item()
-        total += label.size(0)
-
-    for loss_name, loss_value in train_losses.items():
-        train_losses[loss_name] = loss_value / len(train_loader)
-    return train_losses, correct / total
-
-
-def validate(model, test_loader, device):
-    model.eval()
-    correct = 0
-    total = 0
-
-    test_losses = defaultdict(float)
-
-    for images, label in tqdm(test_loader):
-        images, label = images.to(device), label.to(device)
-
-        output, (min_distances, proto_acts, shallow_feas, deep_feas) = model(images)
-
-        # Compute losses
-        cross_entropy = torch.nn.functional.cross_entropy(output, label)
-
-        # Clst loss
-        cluster_cost = model.get_clst_loss(min_distances, label)
-        # Seq loss
-        separation_cost = model.get_sep_loss(min_distances, label)
-        # Ortho loss
-        ortho_cost = model.get_ortho_loss()
-
-        test_losses['crs_ent'] += coefs['crs_ent'] * cross_entropy.item()
-        test_losses['clst'] += coefs['clst'] * cluster_cost.item()
-        test_losses['sep'] += coefs['sep'] * separation_cost.item()
-        test_losses['orth'] += coefs['orth'] * ortho_cost.item()
-
-        predicted = torch.argmax(output, dim=-1)
-        correct += (predicted == label).sum().item()
-        total += label.size(0)
-
-    for loss_name, loss_value in test_losses.items():
-        test_losses[loss_name] = loss_value / len(test_loader)
-    return test_losses, correct / total
-
-
 def load_data(dataset_name: str, data_dir: str, batch_size: int):
     assert dataset_name in ['CUB', 'SUN']
     if dataset_name == 'SUN':
@@ -115,8 +33,7 @@ def load_data(dataset_name: str, data_dir: str, batch_size: int):
         num_classes = 717
     else:
         transforms = Compose([
-            Resize(224, interpolation=InterpolationMode.BICUBIC),
-            CenterCrop(224),
+            Resize(224),
             ToTensor(),
             Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225)),
         ])
