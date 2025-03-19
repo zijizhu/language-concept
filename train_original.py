@@ -14,6 +14,7 @@ from tqdm import tqdm
 from data import SUNDataset, CUBConceptDataset
 from models.original import construct_OursNet
 import torch.nn.functional as F
+from train_and_test import train, test
 
 coefs = {
     'crs_ent': 1,
@@ -211,16 +212,15 @@ def main():
             optimizer = get_full_optimizer(model)
             lr_scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=5, gamma=0.1)
 
-        train_losses, train_acc = train(model, train_loader, optimizer, device)
-        val_losses, val_acc = validate(model, test_loader, device)
+        _, train_losses = train(model, epoch, train_loader, optimizer, None, None, None)
 
         for loss_name, loss_value in train_losses.items():
             logger.info(f"Train {loss_name}: {loss_value:.4f}")
-        logger.info(f"Train Acc: {train_acc:.4f}")
+
+        _, val_losses = test(model, epoch, train_loader, optimizer, None, None, None)
 
         for loss_name, loss_value in val_losses.items():
             logger.info(f"Val {loss_name}: {loss_value:.4f}")
-        logger.info(f"Val Acc: {val_acc:.4f}")
 
         torch.save(
             dict(
