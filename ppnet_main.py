@@ -177,7 +177,7 @@ def main():
 
     logger.info("Start warmup...")
     for epoch in range(args.epochs):
-        if epoch == args.joint_start_epoch:
+        if epoch == 1:
             logger.info("Start fine-tuning...")
             optimizer = get_full_optimizer(model)
             lr_scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=5, gamma=0.1)
