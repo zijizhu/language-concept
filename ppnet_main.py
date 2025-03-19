@@ -130,8 +130,8 @@ def main():
     parser.add_argument('--data-dir', type=str, default='datasets')
     parser.add_argument('--dataset', type=str, default='CUB', choices=['CUB', 'SUN'])
 
-    parser.add_argument('--clst-coef', type=float, default=0.8)
-    parser.add_argument('--sep-coef', type=float, default=-0.08)
+    parser.add_argument('--clst-coef', type=float, default=-0.8)
+    parser.add_argument('--sep-coef', type=float, default=0.08)
     parser.add_argument('--ortho-coef', type=float, default=1e-4)
 
     parser.add_argument('--joint-start-epoch', type=int, default=3)
