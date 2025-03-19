@@ -77,10 +77,9 @@ def load_data(dataset_name: str, data_dir: str, batch_size: int):
         num_classes = 717
     else:
         transforms = Compose([
-            Resize(224, interpolation=InterpolationMode.BICUBIC),
-            CenterCrop(224),
+            Resize((224, 224,)),
             ToTensor(),
-            Normalize((0.48145466, 0.4578275, 0.40821073), (0.26862954, 0.26130258, 0.27577711)),
+            Normalize((0.485, 0.456, 0.406,), (0.229, 0.224, 0.225,)),
         ])
         train_dataset = CUBConceptDataset(
             Path(data_dir) / 'cub200_cropped' / 'train_cropped_augmented',

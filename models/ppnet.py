@@ -50,7 +50,6 @@ class PPNet(nn.Module):
         for layer in self.adapter.modules():
             if isinstance(layer, nn.Conv2d):
                 nn.init.kaiming_normal_(layer.weight, mode='fan_out', nonlinearity='relu')
-
                 if layer.bias is not None:
                     nn.init.constant_(layer.bias, 0)
 
