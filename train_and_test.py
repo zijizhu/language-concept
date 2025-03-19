@@ -1,6 +1,7 @@
 import torch
 import logging
 import torch.nn.functional as F
+from tqdm import tqdm
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
@@ -25,7 +26,7 @@ def _train_or_test(model, epoch, dataloader, tb_writer, iteration, optimizer=Non
     logger = logging.getLogger("train")
     logger.info("Start train one epoch")
 
-    for image, label in dataloader:
+    for image, label in tqdm(dataloader, total=len(dataloader)):
         input = image.to(device=device)
         target = label.to(device=device)
         grad_req = torch.enable_grad() if is_train else torch.no_grad()
