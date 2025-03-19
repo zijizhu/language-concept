@@ -24,8 +24,7 @@ class OursNet(nn.Module):
         self.prototype_activation_function = prototype_activation_function
 
         assert (self.num_prototypes % self.num_classes == 0)
-        self.prototype_class_identity = torch.zeros(self.num_prototypes,
-                                                    self.num_classes)
+        self.register_buffer("prototype_class_identity", torch.zeros(self.num_prototypes, self.num_classes))
 
         self.num_prototypes_per_class = self.num_prototypes // self.num_classes
         for j in range(self.num_prototypes):
