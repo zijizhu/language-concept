@@ -141,6 +141,8 @@ def main():
     parser.add_argument('--joint-start-epoch', type=int, default=3)
     parser.add_argument('--name', type=str, required=True)
 
+    parser.add_argument('--seed', type=int, default=42)
+
     args = parser.parse_args()
 
     log_dir = Path('logs') / args.name
@@ -161,7 +163,7 @@ def main():
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-    seed_everything(42)
+    seed_everything(args.seed)
 
     train_loader, test_loader, num_classes = load_data(args.dataset, args.data_dir, args.batch_size)
 
