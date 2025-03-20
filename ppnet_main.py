@@ -13,6 +13,7 @@ from tqdm import tqdm
 
 from data import SUNDataset, CUBConceptDataset
 from models.ppnet import PPNet, Criterion
+from lightning import seed_everything
 
 
 def train(model, train_loader, criterion, optimizer, device):
@@ -136,8 +137,11 @@ def main():
 
     parser.add_argument('--joint-start-epoch', type=int, default=3)
     parser.add_argument('--name', type=str, required=True)
+    parser.add_argument('--seed', type=int, default=43)
 
     args = parser.parse_args()
+
+    seed_everything(args.seed)
 
     log_dir = Path('logs') / args.name
     log_dir.mkdir(parents=True, exist_ok=True)
