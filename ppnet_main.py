@@ -10,6 +10,7 @@ import torch.optim as optim
 from torch.utils.data import DataLoader
 from torchvision.transforms import Compose, Resize, CenterCrop, ToTensor, Normalize, InterpolationMode
 from tqdm import tqdm
+from lightning import seed_everything
 
 from data import SUNDataset, CUBConceptDataset
 from models.ppnet import PPNet, Criterion
@@ -130,8 +131,11 @@ def main():
     parser.add_argument('--data-dir', type=str, default='datasets')
     parser.add_argument('--dataset', type=str, default='CUB', choices=['CUB', 'SUN'])
 
-    parser.add_argument('--clst-coef', type=float, default=-0.8)
-    parser.add_argument('--sep-coef', type=float, default=0.08)
+    # parser.add_argument('--clst-coef', type=float, default=-0.8)
+    parser.add_argument('--clst-coef', type=float, default=0.8)  # with original
+    # parser.add_argument('--sep-coef', type=float, default=0.08)
+    parser.add_argument('--sep-coef', type=float, default=-0.08)  # with original
+
     parser.add_argument('--ortho-coef', type=float, default=1e-4)
 
     parser.add_argument('--joint-start-epoch', type=int, default=3)
@@ -156,6 +160,8 @@ def main():
     logger = logging.getLogger()
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
+    seed_everything(42)
 
     train_loader, test_loader, num_classes = load_data(args.dataset, args.data_dir, args.batch_size)
 

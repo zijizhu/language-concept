@@ -63,12 +63,12 @@ class PPNet(nn.Module):
         cosine_scores = F.adaptive_max_pool2d(cosine_activations, (1, 1,)).squeeze()  # shape: [batch_size, num_concept * k]
         prototype_logits = F.adaptive_max_pool2d(activations, (1, 1,)).squeeze()  # shape: [batch_size, num_concept * k]
 
-        # cosine_min_distances = self.global_min_pooling(-cosine_activations)
+        cosine_min_distances = self.global_min_pooling(-cosine_activations)
 
         logits = self.classifier(prototype_logits)
 
-        return logits, cosine_scores, cosine_activations, activations
-        # return logits, cosine_min_distances, cosine_activations, activations
+        # return logits, cosine_scores, cosine_activations, activations
+        return logits, cosine_min_distances, cosine_activations, activations
 
 
     def normalize_prototypes(self):
@@ -116,8 +116,8 @@ class Criterion(nn.Module):
     def forward(self, logits: torch.Tensor, cosine_scores: torch.Tensor, targets: torch.Tensor, prototypes: torch.Tensor):
         loss_dict = dict(
             xe=self.xe(logits, targets),
-            clst=self.clst_coef * self.clst_criterion(cosine_scores, targets)
-            # clst=self.clst_coef * self.get_clst_loss(cosine_scores, targets)
+            # clst=self.clst_coef * self.clst_criterion(cosine_scores, targets)
+            clst=self.clst_coef * self.get_clst_loss(cosine_scores, targets)
         )
         # if self.sep_coef != 0:
         #     loss_dict['sep'] = self.sep_coef * self.sep_criterion(cosine_scores, targets)
